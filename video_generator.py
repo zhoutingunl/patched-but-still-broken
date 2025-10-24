@@ -66,7 +66,7 @@ class VideoGenerator:
         payload = {
             "instances": instances,
             "parameters": {
-                "videoDuration": duration,
+                "durationSeconds": duration,
                 "sampleCount": 1,
                 "aspectRatio": aspect_ratio,
                 "generateAudio": True,
