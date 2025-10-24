@@ -7,6 +7,7 @@ let audioPlayer = null;
 document.addEventListener('DOMContentLoaded', function() {
     audioPlayer = document.getElementById('audio-player');
     initializeEventListeners();
+    restoreFileInfo();
 });
 
 function initializeEventListeners() {
@@ -17,6 +18,7 @@ function initializeEventListeners() {
     const prevBtn = document.getElementById('prev-btn');
     const nextBtn = document.getElementById('next-btn');
     const stopBtn = document.getElementById('stop-btn');
+    const returnHomeBtn = document.getElementById('return-home-btn');
     const volumeSlider = document.getElementById('volume-slider');
 
     selectFileBtn.addEventListener('click', () => novelFile.click());
@@ -27,6 +29,9 @@ function initializeEventListeners() {
     prevBtn.addEventListener('click', () => navigateScene(-1));
     nextBtn.addEventListener('click', () => navigateScene(1));
     stopBtn.addEventListener('click', stopPlayback);
+    if (returnHomeBtn) {
+        returnHomeBtn.addEventListener('click', returnToHome);
+    }
     volumeSlider.addEventListener('input', handleVolumeChange);
 
     audioPlayer.addEventListener('ended', handleAudioEnded);
@@ -37,6 +42,7 @@ function handleFileSelect(event) {
     if (file) {
         document.getElementById('file-info').textContent = `已选择: ${file.name}`;
         document.getElementById('start-generate-btn').disabled = false;
+        localStorage.setItem('uploaded_file_name', file.name);
     }
 }
 
@@ -250,4 +256,26 @@ function handleVolumeChange(event) {
 function resetUploadSection() {
     document.getElementById('progress-section').classList.add('hidden');
     document.getElementById('upload-section').classList.remove('hidden');
+}
+
+function restoreFileInfo() {
+    const savedFileName = localStorage.getItem('uploaded_file_name');
+    if (savedFileName) {
+        document.getElementById('file-info').textContent = `已选择: ${savedFileName}`;
+    }
+}
+
+function returnToHome() {
+    if (confirm('确定要返回主页吗？当前播放将被停止。')) {
+        stopPlayback();
+        document.getElementById('player-section').classList.add('hidden');
+        document.getElementById('upload-section').classList.remove('hidden');
+        currentTaskId = null;
+        scenes = [];
+        currentSceneIndex = 0;
+        document.getElementById('novel-file').value = '';
+        document.getElementById('file-info').textContent = '';
+        document.getElementById('start-generate-btn').disabled = true;
+        localStorage.removeItem('uploaded_file_name');
+    }
 }
