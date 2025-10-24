@@ -3,8 +3,6 @@ from typing import List, Dict, Optional
 from src.generators.image_generator import ImageGenerator
 from src.generators.tts_generator import TTSGenerator
 from src.managers.character_manager import CharacterManager
-import re
-
 
 class SceneComposer:
     def __init__(self, image_generator: ImageGenerator, 
