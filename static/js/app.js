@@ -42,7 +42,8 @@ function handleFileSelect(event) {
 
 async function handleStartGenerate() {
     const fileInput = document.getElementById('novel-file');
-    const apiKey = document.getElementById('api-key').value;
+    const apiKey = localStorage.getItem('api_key');
+    const apiProvider = localStorage.getItem('api_provider') || 'qiniu';
     const maxScenes = document.getElementById('max-scenes').value;
 
     if (!fileInput.files[0]) {
@@ -50,9 +51,16 @@ async function handleStartGenerate() {
         return;
     }
 
+    if (!apiKey) {
+        alert('请先在设置页面配置 API Key');
+        window.location.href = '/settings';
+        return;
+    }
+
     const formData = new FormData();
     formData.append('novel', fileInput.files[0]);
     formData.append('api_key', apiKey);
+    formData.append('api_provider', apiProvider);
     if (maxScenes) {
         formData.append('max_scenes', maxScenes);
     }

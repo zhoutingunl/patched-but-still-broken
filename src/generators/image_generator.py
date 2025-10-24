@@ -5,18 +5,28 @@ import requests
 from io import BytesIO
 from typing import Optional, Dict
 import hashlib
+import base64
 
 
 class ImageGenerator:
-    def __init__(self, api_key: str):
-        self.client = OpenAI(api_key=api_key)
+    def __init__(self, api_key: str, provider: str = "qiniu"):
+        self.provider = provider
+        
+        if provider == "qiniu":
+            self.client = OpenAI(
+                api_key=api_key,
+                base_url="https://openai.qiniu.com/v1"
+            )
+        else:
+            self.client = OpenAI(api_key=api_key)
+            
         self.cache_dir = "image_cache"
         os.makedirs(self.cache_dir, exist_ok=True)
         
     def generate_character_image(self, character_name: str, 
                                 character_prompt: str,
                                 style: str = "anime") -> Optional[str]:
-        cache_key = hashlib.md5(f"{character_name}_{character_prompt}".encode()).hexdigest()
+        cache_key = hashlib.md5(f"{character_name}_{character_prompt}_{self.provider}".encode()).hexdigest()
         cache_path = os.path.join(self.cache_dir, f"char_{cache_key}.png")
         
         if os.path.exists(cache_path):
@@ -25,19 +35,31 @@ class ImageGenerator:
         full_prompt = f"{style} style, {character_prompt}, high quality, detailed, consistent character design"
         
         try:
-            response = self.client.images.generate(
-                model="dall-e-3",
-                prompt=full_prompt,
-                size="1024x1024",
-                quality="standard",
-                n=1,
-            )
-            
-            image_url = response.data[0].url
-            
-            img_response = requests.get(image_url)
-            img = Image.open(BytesIO(img_response.content))
-            img.save(cache_path)
+            if self.provider == "qiniu":
+                response = self.client.images.generate(
+                    model="gemini-2.5-flash-image",
+                    prompt=full_prompt,
+                    size="1024x1024",
+                    n=1,
+                    response_format="b64_json"
+                )
+                
+                img_data = base64.b64decode(response.data[0].b64_json)
+                img = Image.open(BytesIO(img_data))
+                img.save(cache_path)
+            else:
+                response = self.client.images.generate(
+                    model="dall-e-3",
+                    prompt=full_prompt,
+                    size="1024x1024",
+                    quality="standard",
+                    n=1,
+                )
+                
+                image_url = response.data[0].url
+                img_response = requests.get(image_url)
+                img = Image.open(BytesIO(img_response.content))
+                img.save(cache_path)
             
             return cache_path
             
@@ -48,7 +70,7 @@ class ImageGenerator:
     def generate_scene_image(self, scene_description: str, 
                             characters: list = None,
                             style: str = "anime") -> Optional[str]:
-        cache_key = hashlib.md5(scene_description.encode()).hexdigest()
+        cache_key = hashlib.md5(f"{scene_description}_{self.provider}".encode()).hexdigest()
         cache_path = os.path.join(self.cache_dir, f"scene_{cache_key}.png")
         
         if os.path.exists(cache_path):
@@ -61,19 +83,31 @@ class ImageGenerator:
             full_prompt += f", featuring characters: {char_desc}"
         
         try:
-            response = self.client.images.generate(
-                model="dall-e-3",
-                prompt=full_prompt,
-                size="1792x1024",
-                quality="standard",
-                n=1,
-            )
-            
-            image_url = response.data[0].url
-            
-            img_response = requests.get(image_url)
-            img = Image.open(BytesIO(img_response.content))
-            img.save(cache_path)
+            if self.provider == "qiniu":
+                response = self.client.images.generate(
+                    model="gemini-2.5-flash-image",
+                    prompt=full_prompt,
+                    size="1792x1024",
+                    n=1,
+                    response_format="b64_json"
+                )
+                
+                img_data = base64.b64decode(response.data[0].b64_json)
+                img = Image.open(BytesIO(img_data))
+                img.save(cache_path)
+            else:
+                response = self.client.images.generate(
+                    model="dall-e-3",
+                    prompt=full_prompt,
+                    size="1792x1024",
+                    quality="standard",
+                    n=1,
+                )
+                
+                image_url = response.data[0].url
+                img_response = requests.get(image_url)
+                img = Image.open(BytesIO(img_response.content))
+                img.save(cache_path)
             
             return cache_path
             

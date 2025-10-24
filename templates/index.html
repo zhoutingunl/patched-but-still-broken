@@ -11,6 +11,9 @@
         <header>
             <h1>📚 小说动漫化系统</h1>
             <p class="subtitle">自动将小说转换为图配文+语音的动漫作品</p>
+            <div style="margin-top: 20px;">
+                <a href="/settings" class="btn btn-primary" style="text-decoration: none; display: inline-block;">⚙️ 设置</a>
+            </div>
         </header>
 
         <section id="upload-section" class="section">
@@ -22,10 +25,6 @@
             </div>
             
             <div class="settings">
-                <div class="setting-item">
-                    <label for="api-key">OpenAI API Key:</label>
-                    <input type="password" id="api-key" placeholder="sk-...">
-                </div>
                 <div class="setting-item">
                     <label for="max-scenes">最大场景数 (可选):</label>
                     <input type="number" id="max-scenes" min="1" placeholder="留空生成全部">

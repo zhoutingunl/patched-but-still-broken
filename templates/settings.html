@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设置 - 小说动漫化系统</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚙️ 系统设置</h1>
+            <p class="subtitle">配置 API Key 和其他选项</p>
+        </header>
+
+        <section class="section">
+            <h2>API 配置</h2>
+            <div class="settings">
+                <div class="setting-item">
+                    <label for="api-key">七牛 API Key:</label>
+                    <input type="password" id="api-key" placeholder="输入七牛 API Key">
+                    <small style="color: #666; margin-top: 5px;">用于生成动漫场景图片</small>
+                </div>
+                <div class="setting-item">
+                    <label for="api-provider">API 提供商:</label>
+                    <select id="api-provider" style="padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1em;">
+                        <option value="qiniu">七牛 AI</option>
+                        <option value="openai">OpenAI</option>
+                    </select>
+                </div>
+            </div>
+            <button id="save-settings-btn" class="btn btn-success">保存设置</button>
+        </section>
+
+        <section class="section">
+            <h2>当前配置状态</h2>
+            <div id="config-status" style="padding: 20px; background: #f8f9ff; border-radius: 10px;">
+                <p><strong>API 提供商:</strong> <span id="current-provider">-</span></p>
+                <p><strong>API Key 状态:</strong> <span id="key-status">未配置</span></p>
+            </div>
+        </section>
+
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="/" class="btn btn-primary">返回主页</a>
+        </div>
+    </div>
+
+    <script src="/static/js/settings.js"></script>
+</body>
+</html>

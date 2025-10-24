@@ -23,7 +23,7 @@ generation_status = {}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def generate_anime_async(task_id, novel_path, max_scenes, api_key):
+def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qiniu'):
     try:
         generation_status[task_id] = {
             'status': 'processing',
@@ -31,7 +31,7 @@ def generate_anime_async(task_id, novel_path, max_scenes, api_key):
             'message': '正在解析小说...'
         }
         
-        generator = AnimeGenerator(openai_api_key=api_key)
+        generator = AnimeGenerator(openai_api_key=api_key, provider=provider)
         metadata = generator.generate_from_novel(novel_path, max_scenes=max_scenes)
         
         generation_status[task_id] = {
@@ -51,6 +51,10 @@ def generate_anime_async(task_id, novel_path, max_scenes, api_key):
 def index():
     return render_template('index.html')
 
+@app.route('/settings')
+def settings():
+    return render_template('settings.html')
+
 @app.route('/api/upload', methods=['POST'])
 def upload_novel():
     if 'novel' not in request.files:
@@ -68,16 +72,17 @@ def upload_novel():
         
         max_scenes = request.form.get('max_scenes', type=int)
         api_key = request.form.get('api_key', '')
+        provider = request.form.get('api_provider', 'qiniu')
         
         if not api_key:
             api_key = os.getenv('OPENAI_API_KEY')
         
         if not api_key:
-            return jsonify({'error': '需要提供 OpenAI API Key'}), 400
+            return jsonify({'error': '需要提供 API Key'}), 400
         
         thread = threading.Thread(
             target=generate_anime_async,
-            args=(task_id, file_path, max_scenes, api_key)
+            args=(task_id, file_path, max_scenes, api_key, provider)
         )
         thread.start()
         
