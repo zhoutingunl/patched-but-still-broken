@@ -3,10 +3,12 @@ let scenes = [];
 let currentSceneIndex = 0;
 let isPlaying = false;
 let audioPlayer = null;
+let selectedFile = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     audioPlayer = document.getElementById('audio-player');
     initializeEventListeners();
+    restoreFileInfo();
 });
 
 function initializeEventListeners() {
@@ -32,28 +34,43 @@ function initializeEventListeners() {
     audioPlayer.addEventListener('ended', handleAudioEnded);
 }
 
+function restoreFileInfo() {
+    const savedFileName = sessionStorage.getItem('novel_file_name');
+    const fromSettings = sessionStorage.getItem('from_settings_redirect');
+    
+    if (savedFileName && fromSettings === 'true') {
+        document.getElementById('file-info').textContent = `提示: 从设置返回后需要重新选择文件 (之前: ${savedFileName})`;
+        document.getElementById('file-info').style.color = '#ff6b6b';
+        sessionStorage.removeItem('from_settings_redirect');
+        sessionStorage.removeItem('novel_file_name');
+    }
+}
+
 function handleFileSelect(event) {
     const file = event.target.files[0];
     if (file) {
+        selectedFile = file;
+        sessionStorage.setItem('novel_file_name', file.name);
         document.getElementById('file-info').textContent = `已选择: ${file.name}`;
+        document.getElementById('file-info').style.color = '';
         document.getElementById('start-generate-btn').disabled = false;
     }
 }
 
 async function handleStartGenerate() {
-    const fileInput = document.getElementById('novel-file');
     const apiKey = localStorage.getItem('api_key');
     const apiProvider = localStorage.getItem('api_provider') || 'qiniu';
     const maxScenes = document.getElementById('max-scenes').value;
     const customPrompt = document.getElementById('custom-prompt').value;
 
-    if (!fileInput.files[0]) {
+    if (!selectedFile) {
         alert('请先选择小说文件');
         return;
     }
 
     if (!apiKey) {
         alert('请先在设置页面配置 API Key');
+        sessionStorage.setItem('from_settings_redirect', 'true');
         window.location.href = '/settings';
         return;
     }
@@ -61,7 +78,7 @@ async function handleStartGenerate() {
     const enableVideo = document.getElementById('enable-video').checked;
     
     const formData = new FormData();
-    formData.append('novel', fileInput.files[0]);
+    formData.append('novel', selectedFile);
     formData.append('api_key', apiKey);
     formData.append('api_provider', apiProvider);
     formData.append('enable_video', enableVideo ? 'true' : 'false');
