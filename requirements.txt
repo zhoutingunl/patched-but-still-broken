@@ -6,3 +6,5 @@ python-dotenv>=1.0.0
 gtts>=2.5.0
 pydub>=0.25.1
 jieba>=0.42.1
+flask>=3.0.0
+flask-cors>=4.0.0

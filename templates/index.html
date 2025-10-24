@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小说动漫化展示</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📚 小说动漫化系统</h1>
+            <p class="subtitle">自动将小说转换为图配文+语音的动漫作品</p>
+        </header>
+
+        <section id="upload-section" class="section">
+            <h2>上传小说</h2>
+            <div class="upload-area">
+                <input type="file" id="novel-file" accept=".txt" style="display: none;">
+                <button id="select-file-btn" class="btn btn-primary">选择小说文件 (.txt)</button>
+                <div id="file-info" class="file-info"></div>
+            </div>
+            
+            <div class="settings">
+                <div class="setting-item">
+                    <label for="api-key">OpenAI API Key:</label>
+                    <input type="password" id="api-key" placeholder="sk-...">
+                </div>
+                <div class="setting-item">
+                    <label for="max-scenes">最大场景数 (可选):</label>
+                    <input type="number" id="max-scenes" min="1" placeholder="留空生成全部">
+                </div>
+            </div>
+            
+            <button id="start-generate-btn" class="btn btn-success" disabled>开始生成</button>
+        </section>
+
+        <section id="progress-section" class="section hidden">
+            <h2>生成进度</h2>
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div id="progress-fill" class="progress-fill"></div>
+                </div>
+                <p id="progress-text" class="progress-text">准备中...</p>
+            </div>
+        </section>
+
+        <section id="player-section" class="section hidden">
+            <h2>动漫播放</h2>
+            
+            <div class="controls">
+                <button id="prev-btn" class="btn btn-control">⏮ 上一帧</button>
+                <button id="play-pause-btn" class="btn btn-control">▶️ 播放</button>
+                <button id="next-btn" class="btn btn-control">下一帧 ⏭</button>
+                <button id="stop-btn" class="btn btn-control">⏹ 停止</button>
+            </div>
+
+            <div class="volume-control">
+                <label>🔊 音量:</label>
+                <input type="range" id="volume-slider" min="0" max="100" value="70">
+                <span id="volume-value">70%</span>
+            </div>
+
+            <div id="scene-container" class="scene-container">
+                <div id="scene-card" class="scene-card">
+                    <div class="scene-image-wrapper">
+                        <img id="scene-image" src="" alt="场景图片">
+                    </div>
+                    <div class="scene-text-wrapper">
+                        <p id="scene-text" class="scene-text"></p>
+                    </div>
+                    <div class="scene-info">
+                        <span id="scene-counter">场景 0 / 0</span>
+                        <span id="scene-characters"></span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <audio id="audio-player" preload="auto"></audio>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
