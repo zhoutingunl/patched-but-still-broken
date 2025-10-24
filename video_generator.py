@@ -63,12 +63,6 @@ class VideoGenerator:
         
         instances = [{"prompt": prompt}]
         
-        if image_path:
-            import base64
-            with open(image_path, 'rb') as f:
-                image_data = base64.b64encode(f.read()).decode('utf-8')
-                instances[0]["image"] = f"data:image/png;base64,{image_data}"
-        
         payload = {
             "instances": instances,
             "parameters": {
@@ -78,7 +72,7 @@ class VideoGenerator:
                 "generateAudio": True,
                 "personGeneration": "allow_adult"
             },
-            "model": "veo-3.0"
+            "model": "veo-3.1-fast-generate-preview"
         }
         
         try:
