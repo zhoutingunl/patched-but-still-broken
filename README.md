@@ -31,19 +31,19 @@ OPENAI_API_KEY=your_openai_api_key_here
 ### 基本用法
 
 ```bash
-python anime_generator.py 你的小说.txt
+python main.py 你的小说.txt
 ```
 
 ### 限制场景数量
 
 ```bash
-python anime_generator.py 你的小说.txt --max-scenes 10
+python main.py 你的小说.txt --max-scenes 10
 ```
 
 ### 直接传入 API Key
 
 ```bash
-python anime_generator.py 你的小说.txt --api-key sk-xxxxx
+python main.py 你的小说.txt --api-key sk-xxxxx
 ```
 
 ## 小说格式要求
@@ -85,14 +85,38 @@ anime_output/
    - 将文字叠加到图片上
    - 使用 gTTS 生成语音配音
 
+## 项目结构
+
+```
+src/
+├── core/               # 核心业务逻辑
+│   ├── anime_generator.py    # 主程序和命令行接口
+│   ├── scene_composer.py     # 场景组合器
+│   └── README.md             # 模块说明
+├── parsers/            # 文本解析模块
+│   ├── novel_parser.py       # 小说解析器
+│   └── README.md             # 模块说明
+├── generators/         # 内容生成模块
+│   ├── image_generator.py    # 图片生成器（DALL-E 3）
+│   ├── tts_generator.py      # 语音生成器（Google TTS）
+│   └── README.md             # 模块说明
+└── managers/           # 管理模块
+    ├── character_manager.py  # 角色管理器
+    └── README.md             # 模块说明
+examples/               # 示例文件
+    ├── example_novel.txt     # 示例小说
+    └── README.md             # 使用说明
+main.py                 # 程序入口
+```
+
 ## 核心模块
 
-- `novel_parser.py` - 小说解析器
-- `character_manager.py` - 角色管理器
-- `image_generator.py` - 图片生成器（基于 OpenAI DALL-E 3）
-- `tts_generator.py` - 语音生成器（基于 Google TTS）
-- `scene_composer.py` - 场景组合器
-- `anime_generator.py` - 主程序和命令行接口
+- **core** - 核心业务逻辑，包含主程序和场景组合功能
+- **parsers** - 文本解析模块，负责解析小说章节和段落
+- **generators** - 内容生成模块，负责生成图片和语音
+- **managers** - 管理模块，负责角色信息管理
+
+详细说明请查看各模块目录下的 README.md 文件。
 
 ## 注意事项
 
@@ -106,10 +130,16 @@ anime_output/
 假设你有一个小说文件 `三体.txt`：
 
 ```bash
-python anime_generator.py 三体.txt --max-scenes 5
+python main.py 三体.txt --max-scenes 5
 ```
 
 这将生成前 5 个场景的动漫内容。
+
+或使用项目自带的示例小说：
+
+```bash
+python main.py examples/example_novel.txt --max-scenes 3
+```
 
 ## 系统要求
 

@@ -1,10 +1,10 @@
 import os
 from dotenv import load_dotenv
-from novel_parser import NovelParser
-from character_manager import CharacterManager
-from image_generator import ImageGenerator
-from tts_generator import TTSGenerator
-from scene_composer import SceneComposer
+from src.parsers.novel_parser import NovelParser
+from src.managers.character_manager import CharacterManager
+from src.generators.image_generator import ImageGenerator
+from src.generators.tts_generator import TTSGenerator
+from src.core.scene_composer import SceneComposer
 from typing import List, Dict
 import json
 

@@ -1,8 +1,8 @@
 import os
 from typing import List, Dict, Optional
-from image_generator import ImageGenerator
-from tts_generator import TTSGenerator
-from character_manager import CharacterManager
+from src.generators.image_generator import ImageGenerator
+from src.generators.tts_generator import TTSGenerator
+from src.managers.character_manager import CharacterManager
 import re
 
 
