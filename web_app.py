@@ -6,6 +6,8 @@ from werkzeug.utils import secure_filename
 from anime_generator import AnimeGenerator
 import threading
 import uuid
+import jieba
+from statistics_db import create_statistics_record, update_statistics_record
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 CORS(app)
@@ -44,6 +46,11 @@ def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qin
             generate_video=enable_video,
             generate_storyboard=generate_storyboard
         )
+        
+        generated_scene_count = len(metadata.get('scenes', []))
+        generated_content_size = calculate_generated_content_size(metadata.get('scenes', []))
+        
+        update_statistics_record(task_id, generated_scene_count, generated_content_size)
         
         generation_status[task_id] = {
             'status': 'completed',
@@ -94,6 +101,22 @@ def upload_novel():
         
         if not api_key:
             return jsonify({'error': '需要提供 API Key'}), 400
+        
+        client_address = request.remote_addr
+        upload_file_count = 1
+        upload_content_size = os.path.getsize(file_path)
+        
+        with open(file_path, 'r', encoding='utf-8') as f:
+            text_content = f.read()
+        upload_text_total_chars = len(text_content)
+        
+        create_statistics_record(
+            session_id=task_id,
+            client_address=client_address,
+            upload_file_count=upload_file_count,
+            upload_text_total_chars=upload_text_total_chars,
+            upload_content_size=upload_content_size
+        )
         
         thread = threading.Thread(
             target=generate_anime_async,
@@ -160,6 +183,18 @@ def serve_file(filepath):
     directory = os.path.dirname(filepath)
     filename = os.path.basename(filepath)
     return send_from_directory(directory, filename)
+
+def calculate_generated_content_size(scenes):
+    total_size = 0
+    for scene_info in scenes:
+        scene_folder = scene_info.get('folder', '')
+        if os.path.exists(scene_folder):
+            for root, dirs, files in os.walk(scene_folder):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    if os.path.exists(file_path):
+                        total_size += os.path.getsize(file_path)
+    return total_size
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
