@@ -24,6 +24,7 @@ function initializeEventListeners() {
     const logoutBtn = document.getElementById('logout-btn');
     const historyBtn = document.getElementById('history-btn');
     const backToUploadBtn = document.getElementById('back-to-upload-btn');
+    const downloadBtn = document.getElementById('download-btn');
 
     selectFileBtn.addEventListener('click', () => novelFile.click());
     
@@ -48,6 +49,9 @@ function initializeEventListeners() {
             document.getElementById('history-section').style.display = 'none';
             document.getElementById('upload-section').style.display = 'block';
         });
+    }
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', handleDownload);
     }
 
     audioPlayer.addEventListener('ended', handleAudioEnded);
@@ -455,5 +459,24 @@ async function loadPlayback(sessionId) {
         }
     } catch (error) {
         alert('加载作品失败: ' + error.message);
+    }
+}
+
+async function handleDownload() {
+    if (!currentTaskId || scenes.length === 0) {
+        alert('没有可下载的内容');
+        return;
+    }
+
+    try {
+        const downloadUrl = `/api/download/${currentTaskId}`;
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = `anime_${currentTaskId}.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    } catch (error) {
+        alert('下载失败: ' + error.message);
     }
 }
