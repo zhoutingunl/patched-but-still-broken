@@ -171,6 +171,10 @@ class SceneComposer:
                 output_image
             )
         
+        storyboard_panels = []
+        if generate_storyboard:
+            storyboard_panels = self.generate_storyboard_panels(scene_info, scene_folder)
+        
         audio_file = self.tts_gen.generate_speech_for_scene(scene_text, scene_index)
         
         if audio_file:
@@ -198,6 +202,7 @@ class SceneComposer:
             'text': scene_text,
             'description': scene_description,
             'characters': characters_in_scene,
+            'storyboard_panels': storyboard_panels,
             'image_path': output_image,
             'audio_path': output_audio,
             'video_path': output_video,
@@ -207,6 +212,145 @@ class SceneComposer:
         self._save_metadata(scene_folder, metadata)
         
         return metadata
+    
+    def generate_storyboard_panels(self, scene_info: Dict, scene_folder: str) -> List[Dict]:
+        """
+        为场景生成连续的漫画分镜
+        """
+        panels = []
+        
+        scene_description = scene_info.get('description', '')
+        location = scene_info.get('location', '')
+        narration = scene_info.get('narration', '')
+        dialogues = scene_info.get('dialogues', [])
+        characters_in_scene = scene_info.get('characters', [])
+        
+        panels_folder = os.path.join(scene_folder, "storyboard")
+        os.makedirs(panels_folder, exist_ok=True)
+        
+        character_seeds = {char: self.char_mgr.get_character_seed(char) 
+                          for char in characters_in_scene 
+                          if self.char_mgr.get_character(char)}
+        
+        print(f"  生成故事板分镜...")
+        
+        panel_index = 0
+        
+        if narration:
+            establishing_shot = self._generate_storyboard_panel(
+                panel_index,
+                panels_folder,
+                scene_description,
+                "wide shot",
+                narration[:200] if len(narration) > 200 else narration,
+                characters_in_scene,
+                character_seeds
+            )
+            if establishing_shot:
+                panels.append(establishing_shot)
+                panel_index += 1
+        
+        for dialogue in dialogues:
+            character = dialogue.get('character', '')
+            text = dialogue.get('text', '')
+            emotion = dialogue.get('emotion', '')
+            
+            shot_type = self._determine_shot_type(emotion, text)
+            
+            dialogue_description = f"{scene_description}, {character}正在说话"
+            if emotion:
+                dialogue_description += f", 表情{emotion}"
+            
+            panel = self._generate_storyboard_panel(
+                panel_index,
+                panels_folder,
+                dialogue_description,
+                shot_type,
+                f"{character}: {text}",
+                [character] if character else [],
+                {character: character_seeds.get(character)} if character in character_seeds else {}
+            )
+            
+            if panel:
+                panels.append(panel)
+                panel_index += 1
+        
+        print(f"  ✓ 生成了 {len(panels)} 个故事板分镜")
+        
+        return panels
+    
+    def _determine_shot_type(self, emotion: str, text: str) -> str:
+        """
+        根据情绪和对话内容决定镜头类型
+        """
+        emotion_lower = emotion.lower() if emotion else ""
+        
+        if any(word in emotion_lower for word in ['惊讶', 'surprised', '震惊', 'shocked']):
+            return "close-up"
+        elif any(word in emotion_lower for word in ['愤怒', 'angry', '生气', '激动']):
+            return "close-up"
+        elif any(word in emotion_lower for word in ['悲伤', 'sad', '难过', '哭泣']):
+            return "medium close-up"
+        elif len(text) > 50:
+            return "medium shot"
+        else:
+            return "medium close-up"
+    
+    def _generate_storyboard_panel(self, panel_index: int, panels_folder: str,
+                                   scene_description: str, shot_type: str,
+                                   text: str, characters: List[str],
+                                   character_seeds: Dict) -> Optional[Dict]:
+        """
+        生成单个故事板分镜
+        """
+        shot_descriptions = {
+            "wide shot": "全景镜头, 展现整体环境",
+            "medium shot": "中景镜头, 半身像",
+            "medium close-up": "中特写镜头, 胸部以上",
+            "close-up": "特写镜头, 面部表情",
+            "extreme close-up": "大特写镜头, 眼睛或细节"
+        }
+        
+        shot_desc = shot_descriptions.get(shot_type, "medium shot")
+        
+        prompt_parts = [scene_description, shot_desc]
+        
+        if characters:
+            char_list = "、".join(characters)
+            prompt_parts.append(f"角色: {char_list}")
+        
+        character_prompts = []
+        for char in characters:
+            if self.char_mgr.get_character(char):
+                character_prompts.append(self.char_mgr.get_character_prompt(char))
+        
+        full_prompt = ", ".join(prompt_parts)
+        full_prompt += ", 漫画分镜风格, 动态构图, 高质量, 细节丰富"
+        
+        panel_image = self.image_gen.generate_scene_image(
+            full_prompt,
+            characters=character_prompts,
+            character_seeds=character_seeds
+        )
+        
+        if panel_image:
+            output_image = os.path.join(panels_folder, f"panel_{panel_index:03d}.png")
+            
+            self.image_gen.create_text_overlay(
+                panel_image,
+                text,
+                output_image
+            )
+            
+            return {
+                'panel_index': panel_index,
+                'shot_type': shot_type,
+                'text': text,
+                'characters': characters,
+                'image_path': output_image
+            }
+        
+        return None
     
     def create_scenes_from_paragraphs(self, paragraphs: List[str], 
                                      start_index: int = 0,
