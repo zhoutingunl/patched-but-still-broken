@@ -80,10 +80,12 @@ class AnimeGenerator:
                 print(f"生成角色 '{char_name}' 的立绘...")
                 appearance_prompt = self.novel_analyzer.generate_character_appearance_prompt(char_info)
                 
+                char_seed = self.char_mgr.get_character_seed(char_name)
                 portrait_path = self.image_gen.generate_character_image(
                     char_name,
                     appearance_prompt,
-                    style="anime"
+                    style="anime",
+                    seed=char_seed
                 )
                 
                 if portrait_path:

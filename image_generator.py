@@ -27,7 +27,8 @@ class ImageGenerator:
         
     def generate_character_image(self, character_name: str, 
                                 character_prompt: str,
-                                style: str = "anime") -> Optional[str]:
+                                style: str = "anime",
+                                seed: int = None) -> Optional[str]:
         cache_key = hashlib.md5(f"{character_name}_{character_prompt}_{self.provider}".encode()).hexdigest()
         cache_path = os.path.join(self.cache_dir, f"char_{cache_key}.png")
         
@@ -41,13 +42,16 @@ class ImageGenerator:
         
         try:
             if self.provider == "qiniu":
-                response = self.client.images.generate(
-                    model="gemini-2.5-flash-image",
-                    prompt=full_prompt,
-                    size="1024x1024",
-                    n=1,
-                    response_format="b64_json"
-                )
+                kwargs = {
+                    "model": "gemini-2.5-flash-image",
+                    "prompt": full_prompt,
+                    "size": "1024x1024",
+                    "n": 1,
+                    "response_format": "b64_json"
+                }
+                if seed is not None:
+                    kwargs["seed"] = seed
+                response = self.client.images.generate(**kwargs)
                 
                 img_data = base64.b64decode(response.data[0].b64_json)
                 img = Image.open(BytesIO(img_data))
@@ -74,7 +78,8 @@ class ImageGenerator:
     
     def generate_scene_image(self, scene_description: str, 
                             characters: list = None,
-                            style: str = "anime") -> Optional[str]:
+                            style: str = "anime",
+                            character_seeds: dict = None) -> Optional[str]:
         cache_key = hashlib.md5(f"{scene_description}_{self.provider}".encode()).hexdigest()
         cache_path = os.path.join(self.cache_dir, f"scene_{cache_key}.png")
         
@@ -94,13 +99,19 @@ class ImageGenerator:
         
         try:
             if self.provider == "qiniu":
-                response = self.client.images.generate(
-                    model="gemini-2.5-flash-image",
-                    prompt=full_prompt,
-                    size="1792x1024",
-                    n=1,
-                    response_format="b64_json"
-                )
+                kwargs = {
+                    "model": "gemini-2.5-flash-image",
+                    "prompt": full_prompt,
+                    "size": "1792x1024",
+                    "n": 1,
+                    "response_format": "b64_json"
+                }
+                if character_seeds and characters:
+                    for char_name, seed_val in character_seeds.items():
+                        if any(char_name in char for char in characters):
+                            kwargs["seed"] = seed_val
+                            break
+                response = self.client.images.generate(**kwargs)
                 
                 img_data = base64.b64decode(response.data[0].b64_json)
                 img = Image.open(BytesIO(img_data))

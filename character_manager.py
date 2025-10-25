@@ -8,6 +8,7 @@ class CharacterManager:
     def __init__(self):
         self.characters = {}
         self.name_frequency = Counter()
+        self.appearance_count = {}
         
     def extract_characters(self, text: str, min_frequency: int = 3) -> List[str]:
         chinese_name_pattern = r'[\\u4e00-\\u9fa5]{2,4}'
@@ -39,14 +40,22 @@ class CharacterManager:
                 'description': description,
                 'appearance': appearance or {},
                 'image_seed': image_seed or hash(name) % 1000000,
-                'appearances': []
+                'appearances': [],
+                'codename': f"<{name}>"
             }
+            self.appearance_count[name] = 0
     
     def get_character(self, name: str) -> Dict:
         return self.characters.get(name, None)
     
     def get_all_characters(self) -> List[Dict]:
         return list(self.characters.values())
+    
+    def get_character_seed(self, name: str) -> int:
+        char = self.get_character(name)
+        if char:
+            return char.get('image_seed', hash(name) % 1000000)
+        return hash(name) % 1000000
     
     def update_character_appearance(self, name: str, appearance_description: str):
         if name in self.characters:
@@ -57,17 +66,30 @@ class CharacterManager:
     def get_character_prompt(self, name: str) -> str:
         char = self.get_character(name)
         if not char:
-            return f"角色：{name}"
+            return f"character: {name}"
         
-        prompt_parts = [f"角色：{name}"]
+        self.appearance_count[name] = self.appearance_count.get(name, 0) + 1
+        appearance_num = self.appearance_count[name]
+        
+        codename = char.get('codename', f"<{name}>")
+        prompt_parts = [f"character: {codename}"]
         
         if char.get('description'):
-            prompt_parts.append(f"描述：{char['description']}")
+            prompt_parts.append(char['description'])
         
-        if char.get('appearance'):
-            appearance = char['appearance']
-            prompt_parts.append(f"外貌：{', '.join(f'{k}: {v}' for k, v in appearance.items())}")
+        if char.get('appearance') and char['appearance'].get('description'):
+            prompt_parts.append(char['appearance']['description'])
         
-        prompt_parts.append(f"种子值：{char['image_seed']}")
+        prompt_parts.append("anime style")
+        prompt_parts.append("consistent character design")
+        prompt_parts.append("same outfit")
+        prompt_parts.append("same hairstyle")
+        prompt_parts.append("same proportions")
+        
+        if appearance_num > 1:
+            prompt_parts.append(f"same character design as previous scenes")
+            prompt_parts.append("same person as previous")
+            prompt_parts.append("identical face and outfit")
+            prompt_parts.append("continuity maintained")
         
         return ', '.join(prompt_parts)
