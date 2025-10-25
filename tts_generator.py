@@ -5,9 +5,12 @@ import hashlib
 
 
 class TTSGenerator:
-    def __init__(self, language: str = 'zh-cn'):
+    def __init__(self, language: str = 'zh-cn', session_id: str = None):
         self.language = language
-        self.cache_dir = "audio_cache"
+        if session_id:
+            self.cache_dir = os.path.join("audio_cache", session_id)
+        else:
+            self.cache_dir = "audio_cache"
         os.makedirs(self.cache_dir, exist_ok=True)
     
     def generate_speech(self, text: str, output_filename: Optional[str] = None) -> Optional[str]:
