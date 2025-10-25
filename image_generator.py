@@ -9,9 +9,10 @@ import base64
 
 
 class ImageGenerator:
-    def __init__(self, api_key: str, provider: str = "qiniu", custom_prompt: str = None):
+    def __init__(self, api_key: str, provider: str = "qiniu", custom_prompt: str = None, content_hash: str = None):
         self.provider = provider
         self.custom_prompt = custom_prompt
+        self.content_hash = content_hash
         
         if provider == "qiniu":
             self.client = OpenAI(
@@ -22,12 +23,17 @@ class ImageGenerator:
             self.client = OpenAI(api_key=api_key)
             
         self.cache_dir = "image_cache"
+        if content_hash:
+            self.cache_dir = os.path.join(self.cache_dir, content_hash)
         os.makedirs(self.cache_dir, exist_ok=True)
         
     def generate_character_image(self, character_name: str, 
                                 character_prompt: str,
                                 style: str = "anime") -> Optional[str]:
-        cache_key = hashlib.md5(f"{character_name}_{character_prompt}_{self.provider}".encode()).hexdigest()
+        hash_input = f"{character_name}_{character_prompt}_{self.provider}"
+        if self.content_hash:
+            hash_input = f"{self.content_hash}_{hash_input}"
+        cache_key = hashlib.md5(hash_input.encode()).hexdigest()
         cache_path = os.path.join(self.cache_dir, f"char_{cache_key}.png")
         
         if os.path.exists(cache_path):
@@ -74,7 +80,10 @@ class ImageGenerator:
     def generate_scene_image(self, scene_description: str, 
                             characters: list = None,
                             style: str = "anime") -> Optional[str]:
-        cache_key = hashlib.md5(f"{scene_description}_{self.provider}".encode()).hexdigest()
+        hash_input = f"{scene_description}_{self.provider}"
+        if self.content_hash:
+            hash_input = f"{self.content_hash}_{hash_input}"
+        cache_key = hashlib.md5(hash_input.encode()).hexdigest()
         cache_path = os.path.join(self.cache_dir, f"scene_{cache_key}.png")
         
         if os.path.exists(cache_path):

@@ -11,20 +11,21 @@ import json
 
 
 class AnimeGenerator:
-    def __init__(self, openai_api_key: str = None, provider: str = "qiniu", custom_prompt: str = None, enable_video: bool = False):
+    def __init__(self, openai_api_key: str = None, provider: str = "qiniu", custom_prompt: str = None, enable_video: bool = False, content_hash: str = None):
         load_dotenv()
         
         self.api_key = openai_api_key or os.getenv('OPENAI_API_KEY')
         if not self.api_key:
             raise ValueError("需要提供 API Key")
         
+        self.content_hash = content_hash
         self.char_mgr = CharacterManager()
-        self.image_gen = ImageGenerator(self.api_key, provider=provider, custom_prompt=custom_prompt)
-        self.tts_gen = TTSGenerator()
+        self.image_gen = ImageGenerator(self.api_key, provider=provider, custom_prompt=custom_prompt, content_hash=content_hash)
+        self.tts_gen = TTSGenerator(content_hash=content_hash)
         
         self.video_gen = None
         if enable_video:
-            self.video_gen = VideoGenerator(self.api_key)
+            self.video_gen = VideoGenerator(self.api_key, content_hash=content_hash)
         
         self.scene_composer = SceneComposer(self.image_gen, self.tts_gen, self.char_mgr, self.video_gen)
         

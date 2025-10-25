@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_cors import CORS
 import os
 import json
+import hashlib
 from werkzeug.utils import secure_filename
 from anime_generator import AnimeGenerator
 import threading
@@ -23,7 +24,7 @@ generation_status = {}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qiniu', custom_prompt=None, enable_video=False):
+def generate_anime_async(task_id, novel_path, max_scenes, api_key, content_hash, provider='qiniu', custom_prompt=None, enable_video=False):
     try:
         generation_status[task_id] = {
             'status': 'processing',
@@ -31,7 +32,7 @@ def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qin
             'message': '正在解析小说...'
         }
         
-        generator = AnimeGenerator(openai_api_key=api_key, provider=provider, custom_prompt=custom_prompt, enable_video=enable_video)
+        generator = AnimeGenerator(openai_api_key=api_key, provider=provider, custom_prompt=custom_prompt, enable_video=enable_video, content_hash=content_hash)
         metadata = generator.generate_from_novel(novel_path, max_scenes=max_scenes, generate_video=enable_video)
         
         generation_status[task_id] = {
@@ -68,7 +69,12 @@ def upload_novel():
         filename = secure_filename(file.filename)
         task_id = str(uuid.uuid4())
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{task_id}_{filename}")
-        file.save(file_path)
+        
+        file_content = file.read()
+        content_hash = hashlib.md5(file_content).hexdigest()
+        
+        with open(file_path, 'wb') as f:
+            f.write(file_content)
         
         max_scenes = request.form.get('max_scenes', type=int)
         api_key = request.form.get('api_key', '')
@@ -84,7 +90,7 @@ def upload_novel():
         
         thread = threading.Thread(
             target=generate_anime_async,
-            args=(task_id, file_path, max_scenes, api_key, provider, custom_prompt, enable_video)
+            args=(task_id, file_path, max_scenes, api_key, content_hash, provider, custom_prompt, enable_video)
         )
         thread.start()
         
