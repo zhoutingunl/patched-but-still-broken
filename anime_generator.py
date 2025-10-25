@@ -8,6 +8,7 @@ from scene_composer import SceneComposer
 from video_generator import VideoGenerator
 from typing import List, Dict
 import json
+import uuid
 
 
 class AnimeGenerator:
@@ -18,9 +19,10 @@ class AnimeGenerator:
         if not self.api_key:
             raise ValueError("需要提供 API Key")
         
+        self.session_id = str(uuid.uuid4())
         self.char_mgr = CharacterManager()
         self.image_gen = ImageGenerator(self.api_key, provider=provider, custom_prompt=custom_prompt)
-        self.tts_gen = TTSGenerator()
+        self.tts_gen = TTSGenerator(session_id=self.session_id)
         
         self.video_gen = None
         if enable_video:
