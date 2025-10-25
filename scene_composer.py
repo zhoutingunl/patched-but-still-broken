@@ -116,7 +116,8 @@ class SceneComposer:
             'characters': metadata['characters'],
             'image_path': metadata.get('image_path'),
             'audio_path': metadata.get('audio_path'),
-            'video_path': metadata.get('video_path')
+            'video_path': metadata.get('video_path'),
+            'storyboard_shots': metadata.get('storyboard_shots', [])
         }
         
         with open(metadata_path, 'w', encoding='utf-8') as f:
