@@ -187,6 +187,9 @@ def get_scenes(task_id):
 
 @app.route('/api/file/<path:filepath>')
 def serve_file(filepath):
+    if not os.path.isabs(filepath):
+        filepath = os.path.abspath(filepath)
+    
     directory = os.path.dirname(filepath)
     filename = os.path.basename(filepath)
     return send_from_directory(directory, filename)
