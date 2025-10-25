@@ -61,6 +61,43 @@
             margin-top: 10px;
             display: none;
         }
+        .oauth-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .oauth-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        .oauth-btn:hover {
+            background: #f8f9fa;
+            border-color: #bbb;
+        }
+        .oauth-google {
+            border-color: #4285F4;
+            color: #4285F4;
+        }
+        .oauth-google:hover {
+            background: #f1f8ff;
+            border-color: #4285F4;
+        }
+        .oauth-wechat {
+            border-color: #07C160;
+            color: #07C160;
+        }
+        .oauth-wechat:hover {
+            background: #f0fdf4;
+            border-color: #07C160;
+        }
     </style>
 </head>
 <body>
@@ -87,6 +124,29 @@
                 </div>
                 <button class="btn btn-primary" onclick="handleLogin()" style="width: 100%;">登录</button>
                 <div id="login-error" class="error-message"></div>
+                
+                <div style="margin: 20px 0; text-align: center; color: #999;">
+                    <span>——— 或者 ———</span>
+                </div>
+                
+                <div class="oauth-buttons">
+                    <a href="/api/login/google" class="oauth-btn oauth-google">
+                        <svg width="18" height="18" viewBox="0 0 18 18" style="vertical-align: middle; margin-right: 8px;">
+                            <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
+                            <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
+                            <path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z"/>
+                            <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z"/>
+                        </svg>
+                        使用 Google 账号登录
+                    </a>
+                    <a href="/api/login/wechat" class="oauth-btn oauth-wechat">
+                        <svg width="18" height="18" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 8px;" fill="#07C160">
+                            <path d="M8.5 11c.8 0 1.5-.7 1.5-1.5S9.3 8 8.5 8 7 8.7 7 9.5 7.7 11 8.5 11zm7 0c.8 0 1.5-.7 1.5-1.5S16.3 8 15.5 8 14 8.7 14 9.5s.7 1.5 1.5 1.5z"/>
+                            <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm3.5 13c-.8 0-1.5-.7-1.5-1.5s.7-1.5 1.5-1.5 1.5.7 1.5 1.5-.7 1.5-1.5 1.5zm-7 0c-.8 0-1.5-.7-1.5-1.5S7.7 12 8.5 12s1.5.7 1.5 1.5S9.3 15 8.5 15z"/>
+                        </svg>
+                        使用微信扫码登录
+                    </a>
+                </div>
             </div>
 
             <div id="register-form" class="auth-form">
@@ -110,6 +170,21 @@
     </div>
 
     <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const error = urlParams.get('error');
+        if (error) {
+            const errorDiv = document.getElementById('login-error');
+            const errorMessages = {
+                'google_auth_failed': 'Google 登录失败，请重试',
+                'google_auth_error': 'Google 登录出错，请稍后重试',
+                'wechat_auth_failed': '微信登录失败，请重试',
+                'wechat_userinfo_error': '无法获取微信用户信息',
+                'wechat_auth_error': '微信登录出错，请稍后重试'
+            };
+            errorDiv.textContent = errorMessages[error] || '登录失败';
+            errorDiv.style.display = 'block';
+        }
+
         function switchTab(tab) {
             document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));

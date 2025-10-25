@@ -8,12 +8,35 @@ import threading
 import uuid
 import jieba
 from statistics_db import insert_statistics, update_generation_stats, get_statistics
-from user_auth import register_user, login_user, get_user_by_id
+from user_auth import register_user, login_user, get_user_by_id, get_or_create_oauth_user
 from functools import wraps
+from authlib.integrations.flask_client import OAuth
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
-app.secret_key = os.urandom(24)
+app.secret_key = os.getenv('SECRET_KEY', os.urandom(24))
 CORS(app, supports_credentials=True)
+
+oauth = OAuth(app)
+
+google = oauth.register(
+    name='google',
+    client_id=os.getenv('GOOGLE_CLIENT_ID'),
+    client_secret=os.getenv('GOOGLE_CLIENT_SECRET'),
+    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+    client_kwargs={'scope': 'openid email profile'}
+)
+
+wechat = oauth.register(
+    name='wechat',
+    client_id=os.getenv('WECHAT_APP_ID'),
+    client_secret=os.getenv('WECHAT_APP_SECRET'),
+    authorize_url='https://open.weixin.qq.com/connect/qrconnect',
+    access_token_url='https://api.weixin.qq.com/sns/oauth2/access_token',
+    client_kwargs={'scope': 'snsapi_login'}
+)
 
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'txt'}
@@ -137,6 +160,84 @@ def current_user():
         if user:
             return jsonify({'user': {'username': user['username']}}), 200
     return jsonify({'user': None}), 200
+
+@app.route('/api/login/google')
+def google_login():
+    redirect_uri = url_for('google_authorize', _external=True)
+    return google.authorize_redirect(redirect_uri)
+
+@app.route('/api/authorize/google')
+def google_authorize():
+    try:
+        token = google.authorize_access_token()
+        user_info = token.get('userinfo')
+        
+        if not user_info:
+            return redirect('/login?error=google_auth_failed')
+        
+        oauth_id = user_info.get('sub')
+        email = user_info.get('email')
+        username = user_info.get('name', email.split('@')[0] if email else None)
+        avatar_url = user_info.get('picture')
+        
+        success, user, message = get_or_create_oauth_user(
+            oauth_provider='google',
+            oauth_id=oauth_id,
+            email=email,
+            username=username,
+            avatar_url=avatar_url
+        )
+        
+        if success:
+            session['user_id'] = user['id']
+            session['username'] = user['username']
+            return redirect('/')
+        else:
+            return redirect(f'/login?error={message}')
+    except Exception as e:
+        return redirect(f'/login?error=google_auth_error')
+
+@app.route('/api/login/wechat')
+def wechat_login():
+    redirect_uri = url_for('wechat_authorize', _external=True)
+    return wechat.authorize_redirect(redirect_uri)
+
+@app.route('/api/authorize/wechat')
+def wechat_authorize():
+    try:
+        token = wechat.authorize_access_token()
+        access_token = token.get('access_token')
+        openid = token.get('openid')
+        
+        if not access_token or not openid:
+            return redirect('/login?error=wechat_auth_failed')
+        
+        import requests
+        user_info_url = f'https://api.weixin.qq.com/sns/userinfo?access_token={access_token}&openid={openid}'
+        resp = requests.get(user_info_url)
+        user_info = resp.json()
+        
+        if user_info.get('errcode'):
+            return redirect(f'/login?error=wechat_userinfo_error')
+        
+        username = user_info.get('nickname')
+        avatar_url = user_info.get('headimgurl')
+        
+        success, user, message = get_or_create_oauth_user(
+            oauth_provider='wechat',
+            oauth_id=openid,
+            username=username,
+            avatar_url=avatar_url
+        )
+        
+        if success:
+            session['user_id'] = user['id']
+            session['username'] = user['username']
+            return redirect('/')
+        else:
+            return redirect(f'/login?error={message}')
+    except Exception as e:
+        return redirect(f'/login?error=wechat_auth_error')
 
 @app.route('/api/history', methods=['GET'])
 @login_required
