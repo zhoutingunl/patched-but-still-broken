@@ -1,4 +1,6 @@
 import os
+import time
+import uuid
 from dotenv import load_dotenv
 from novel_parser import NovelParser
 from novel_analyzer import NovelAnalyzer
@@ -10,6 +12,7 @@ from scene_composer import SceneComposer
 from video_generator import VideoGenerator
 from typing import List, Dict
 import json
+from business_tracker import get_tracker
 
 
 class AnimeGenerator:
@@ -46,8 +49,16 @@ class AnimeGenerator:
                           generate_video: bool = False,
                           use_storyboard: bool = True,
                           progress_callback = None) -> Dict:
+        tracker = get_tracker()
+        task_id = str(uuid.uuid4())
+        start_time = time.time()
+        
         with open(novel_path, 'r', encoding='utf-8') as f:
             novel_text = f.read()
+        
+        file_size = os.path.getsize(novel_path)
+        tracker.track_upload(task_id, None, os.path.basename(novel_path), file_size, len(novel_text), 'cli')
+        tracker.track_generation_start(task_id, None, max_scenes, self.use_ai_analysis, use_storyboard, generate_video, self.image_gen.provider if hasattr(self.image_gen, 'provider') else 'unknown')
         
         all_scenes = []
         scene_index = 0
@@ -226,6 +237,14 @@ class AnimeGenerator:
         }
         
         self._save_project_metadata(metadata)
+        
+        duration = time.time() - start_time
+        total_size = sum(os.path.getsize(os.path.join(s['folder'], f)) 
+                        for s in all_scenes 
+                        if os.path.exists(s['folder'])
+                        for f in os.listdir(s['folder'])
+                        if os.path.isfile(os.path.join(s['folder'], f)))
+        tracker.track_generation_complete(task_id, None, len(all_scenes), total_size, duration, True)
         
         print(f"\n动漫生成完成！")
         print(f"总场景数：{len(all_scenes)}")
