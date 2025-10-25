@@ -3,6 +3,7 @@ import sys
 import json
 import threading
 import uuid
+import time
 
 from werkzeug.utils import secure_filename
 from anime_generator import AnimeGenerator
@@ -13,6 +14,7 @@ from flask_cors import CORS
 from statistics_db import insert_statistics, update_generation_stats, get_statistics
 from user_auth import register_user, login_user, get_user_by_id, get_user_video_count, increment_user_video_count
 from functools import wraps
+from business_tracker import get_tracker
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 app.secret_key = os.urandom(24)
@@ -31,15 +33,20 @@ generation_status = {}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qiniu', custom_prompt=None, enable_video=False, use_ai_analysis=True, use_storyboard=True):
+def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qiniu', custom_prompt=None, enable_video=False, use_ai_analysis=True, use_storyboard=True, username=None):
+    tracker = get_tracker()
+    start_time = time.time()
+    
     def update_status(progress, message):
         generation_status[task_id] = {
             'status': 'processing',
             'progress': progress,
             'message': message
         }
+        tracker.track_generation_progress(task_id, username, progress, message)
     
     try:
+        tracker.track_generation_start(task_id, username, max_scenes, use_ai_analysis, use_storyboard, enable_video, provider)
         update_status(0, '正在解析小说...')
         
         generator = AnimeGenerator(
@@ -72,6 +79,9 @@ def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qin
         
         update_generation_stats(task_id, generated_scene_count, generated_content_size, metadata)
         
+        duration = time.time() - start_time
+        tracker.track_generation_complete(task_id, username, generated_scene_count, generated_content_size, duration, True)
+        
         generation_status[task_id] = {
             'status': 'completed',
             'progress': 100,
@@ -79,6 +89,9 @@ def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qin
             'metadata': metadata
         }
     except Exception as e:
+        duration = time.time() - start_time
+        tracker.track_generation_complete(task_id, username, 0, 0, duration, False)
+        tracker.track_error(task_id, username, 'generation_error', str(e))
         generation_status[task_id] = {
             'status': 'error',
             'progress': 0,
@@ -213,6 +226,9 @@ def upload_novel():
             filename=filename
         )
         
+        tracker = get_tracker()
+        tracker.track_upload(task_id, username, filename, upload_content_size, upload_text_chars, client_address)
+        
         max_scenes = request.form.get('max_scenes', type=int)
         api_key = request.form.get('api_key', '')
         provider = request.form.get('api_provider', 'qiniu')
@@ -229,7 +245,7 @@ def upload_novel():
         
         thread = threading.Thread(
             target=generate_anime_async,
-            args=(task_id, file_path, max_scenes, api_key, provider, custom_prompt, enable_video, use_ai_analysis, use_storyboard)
+            args=(task_id, file_path, max_scenes, api_key, provider, custom_prompt, enable_video, use_ai_analysis, use_storyboard, username)
         )
         thread.start()
         
