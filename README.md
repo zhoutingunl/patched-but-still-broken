@@ -18,7 +18,7 @@
 ## 安装依赖
 
 ```bash
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 ```
 
 ## 配置
@@ -37,7 +37,7 @@ OPENAI_API_KEY=your_openai_api_key_here
 启动 Web 服务器：
 
 ```bash
-python web_app.py
+python3 web_app.py
 ```
 
 然后在浏览器中打开 `http://localhost:5000`
@@ -56,19 +56,19 @@ Web 界面功能：
 #### 基本用法
 
 ```bash
-python anime_generator.py 你的小说.txt
+python3 anime_generator.py 你的小说.txt
 ```
 
 #### 限制场景数量
 
 ```bash
-python anime_generator.py 你的小说.txt --max-scenes 10
+python3 anime_generator.py 你的小说.txt --max-scenes 10
 ```
 
 #### 直接传入 API Key
 
 ```bash
-python anime_generator.py 你的小说.txt --api-key sk-xxxxx
+python3 anime_generator.py 你的小说.txt --api-key sk-xxxxx
 ```
 
 ## 小说格式要求
@@ -169,7 +169,7 @@ anime_output/
 假设你有一个小说文件 `三体.txt`：
 
 ```bash
-python anime_generator.py 三体.txt --max-scenes 5
+python3 anime_generator.py 三体.txt --max-scenes 5
 ```
 
 这将生成前 5 个场景的动漫内容。
