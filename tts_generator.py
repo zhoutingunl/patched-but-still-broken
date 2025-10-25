@@ -5,14 +5,20 @@ import hashlib
 
 
 class TTSGenerator:
-    def __init__(self, language: str = 'zh-cn'):
+    def __init__(self, language: str = 'zh-cn', content_hash: str = None):
         self.language = language
+        self.content_hash = content_hash
         self.cache_dir = "audio_cache"
+        if content_hash:
+            self.cache_dir = os.path.join(self.cache_dir, content_hash)
         os.makedirs(self.cache_dir, exist_ok=True)
     
     def generate_speech(self, text: str, output_filename: Optional[str] = None) -> Optional[str]:
         if not output_filename:
-            cache_key = hashlib.md5(text.encode()).hexdigest()
+            hash_input = text
+            if self.content_hash:
+                hash_input = f"{self.content_hash}_{text}"
+            cache_key = hashlib.md5(hash_input.encode()).hexdigest()
             output_filename = os.path.join(self.cache_dir, f"audio_{cache_key}.mp3")
         
         if os.path.exists(output_filename):

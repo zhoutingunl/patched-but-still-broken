@@ -7,10 +7,13 @@ import json
 
 
 class VideoGenerator:
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, content_hash: str = None):
         self.api_key = api_key
+        self.content_hash = content_hash
         self.base_url = "https://openai.qiniu.com/v1"
         self.cache_dir = "video_cache"
+        if content_hash:
+            self.cache_dir = os.path.join(self.cache_dir, content_hash)
         os.makedirs(self.cache_dir, exist_ok=True)
         
     def generate_video(self, 
@@ -24,7 +27,10 @@ class VideoGenerator:
         else:
             full_prompt = f"{prompt}, 动漫角色统一，声音与剧情匹配，每帧切换时，角色风格保持连贯，有流畅的过渡动画"
         
-        cache_key = hashlib.md5(f"{full_prompt}_{aspect_ratio}".encode()).hexdigest()
+        hash_input = f"{full_prompt}_{aspect_ratio}"
+        if self.content_hash:
+            hash_input = f"{self.content_hash}_{hash_input}"
+        cache_key = hashlib.md5(hash_input.encode()).hexdigest()
         cache_path = os.path.join(self.cache_dir, f"video_{cache_key}.mp4")
         
         if os.path.exists(cache_path):
