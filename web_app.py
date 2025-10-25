@@ -234,6 +234,11 @@ def get_scenes(task_id):
                 scene_data['audio_url'] = f"/api/file/{scene_folder}/narration.mp3"
                 if scene_data.get('video_path'):
                     scene_data['video_url'] = f"/api/file/{scene_folder}/scene.mp4"
+                
+                if scene_data.get('storyboard_panels'):
+                    for panel in scene_data['storyboard_panels']:
+                        panel['image_url'] = f"/api/file/{panel['image_path']}"
+                
                 scenes.append(scene_data)
     
     return jsonify({
