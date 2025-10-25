@@ -22,9 +22,17 @@ def init_user_db():
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
-                password_hash TEXT NOT NULL,
+                password_hash TEXT,
+                oauth_provider TEXT,
+                oauth_id TEXT,
+                email TEXT,
+                avatar_url TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
+        ''')
+        cursor.execute('''
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_oauth_provider_id 
+            ON users(oauth_provider, oauth_id)
         ''')
         conn.commit()
 
@@ -90,5 +98,40 @@ def get_user_by_id(user_id):
             return dict(user) if user else None
     except Exception as e:
         return None
+
+def get_or_create_oauth_user(oauth_provider, oauth_id, email=None, username=None, avatar_url=None):
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                'SELECT id, username FROM users WHERE oauth_provider = ? AND oauth_id = ?',
+                (oauth_provider, oauth_id)
+            )
+            user = cursor.fetchone()
+            
+            if user:
+                return True, {'id': user['id'], 'username': user['username']}, '登录成功'
+            
+            if not username:
+                username = f"{oauth_provider}_user_{oauth_id[:8]}"
+            
+            base_username = username
+            counter = 1
+            while True:
+                try:
+                    cursor.execute(
+                        'INSERT INTO users (username, oauth_provider, oauth_id, email, avatar_url) VALUES (?, ?, ?, ?, ?)',
+                        (username, oauth_provider, oauth_id, email, avatar_url)
+                    )
+                    conn.commit()
+                    user_id = cursor.lastrowid
+                    return True, {'id': user_id, 'username': username}, '注册成功'
+                except sqlite3.IntegrityError:
+                    username = f"{base_username}_{counter}"
+                    counter += 1
+                    if counter > 100:
+                        return False, None, '用户名冲突，注册失败'
+    except Exception as e:
+        return False, None, f'OAuth登录失败: {str(e)}'
 
 init_user_db()
