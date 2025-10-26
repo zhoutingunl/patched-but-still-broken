@@ -470,6 +470,7 @@ function displayScene(index) {
 
     if (!isVideoMode) {
         audioPlayer.src = scene.audio_url;
+        audioPlayer.load();
     }
 
     const sceneCard = document.getElementById('scene-card');
