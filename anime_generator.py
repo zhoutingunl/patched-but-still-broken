@@ -115,7 +115,7 @@ class AnimeGenerator:
             if progress_callback:
                 progress_callback(35, f'角色设计完成：共生成 {len(character_portraits)} 个角色')
             
-            if self.session_id and hasattr(progress_callback, '__self__'):
+            if self.session_id:
                 from web_app import generation_status
                 characters_data = []
                 for char_name, portrait_path in character_portraits.items():
