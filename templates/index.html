@@ -7,26 +7,24 @@
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <!-- User Info - Fixed aligned with main title -->
-    <div id="user-info" style="position: absolute; top: 60px; left: 20px; z-index: 1000; display: flex; align-items: center; gap: 8px;">
-        <span id="username-display" style="font-size: 13px; color: white; font-weight: 600; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);"></span>
-        <button id="logout-btn" class="btn btn-primary" style="display: none; padding: 6px 12px; font-size: 13px;">退出登录</button>
+    <!-- Top Navigation Bar -->
+    <div style="position: fixed; top: 0; left: 0; right: 0; background: rgba(102, 126, 234, 0.95); backdrop-filter: blur(10px); padding: 12px 20px; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: flex; align-items: center; gap: 15px;">
+        <span id="username-display" style="font-size: 14px; color: white; font-weight: 600;"></span>
+        <button id="logout-btn" class="btn btn-primary" style="display: none; padding: 6px 14px; font-size: 13px;">退出登录</button>
+        <a href="/settings" class="btn btn-primary" style="text-decoration: none; display: inline-block; padding: 6px 14px; font-size: 13px;">⚙️ 设置</a>
+        <button id="history-btn" class="btn btn-primary" style="padding: 6px 14px; font-size: 13px;">📜 历史</button>
     </div>
     
     <!-- QR Code - Fixed aligned with main title -->
-    <div style="position: absolute; top: 45px; right: 20px; z-index: 1000; text-align: center; background-color: white; padding: 10px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+    <div style="position: absolute; top: 70px; right: 20px; z-index: 999; text-align: center; background-color: white; padding: 10px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
         <img src="/static/qrcode.png" alt="加群二维码" style="width: 100px; height: 100px; display: block;">
         <p style="margin-top: 5px; font-size: 12px; color: #666; white-space: nowrap;">扫码加入社群</p>
     </div>
     
-    <div class="container">
+    <div class="container" style="margin-top: 80px;">
         <header>
             <h1>📚 小说动漫化系统</h1>
             <p class="subtitle">自动将小说转换为图配文+语音的动漫作品</p>
-            <div style="margin-top: 20px;">
-                <a href="/settings" class="btn btn-primary" style="text-decoration: none; display: inline-block;">⚙️ 设置</a>
-                <button id="history-btn" class="btn btn-primary" style="margin-left: 10px;">📜 我的历史</button>
-            </div>
         </header>
 
         <section id="history-section" class="section" style="display: none;">
@@ -38,10 +36,15 @@
 
         <section id="upload-section" class="section">
             <h2>上传小说</h2>
-            <div class="upload-area">
+            <div style="margin-bottom: 20px;">
                 <input type="file" id="novel-file" accept=".txt" style="display: none;">
-                <button id="select-file-btn" class="btn btn-primary">选择小说文件 (.txt)</button>
-                <div id="file-info" class="file-info"></div>
+                <button id="select-file-btn" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.9em;">📁 选择文件</button>
+                <span id="file-info" style="margin-left: 15px; font-size: 0.95em; color: #555;"></span>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label for="novel-text-input" style="display: block; font-weight: 600; color: #555; margin-bottom: 8px;">或直接输入小说内容:</label>
+                <textarea id="novel-text-input" rows="8" placeholder="在此输入或粘贴小说内容..." style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1em; font-family: inherit; resize: vertical;"></textarea>
             </div>
             
             <div class="settings">
