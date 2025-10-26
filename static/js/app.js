@@ -25,6 +25,7 @@ function initializeEventListeners() {
     const logoutBtn = document.getElementById('logout-btn');
     const historyBtn = document.getElementById('history-btn');
     const backToUploadBtn = document.getElementById('back-to-upload-btn');
+    const uploadToggleBtn = document.getElementById('upload-toggle-btn');
 
     selectFileBtn.addEventListener('click', () => novelFile.click());
     
@@ -51,10 +52,16 @@ function initializeEventListeners() {
             document.getElementById('upload-section').style.display = 'block';
         });
     }
+    if (uploadToggleBtn) {
+        uploadToggleBtn.addEventListener('click', toggleUploadSection);
+    }
 
     audioPlayer.addEventListener('ended', handleAudioEnded);
 
-    // Mark navigation to settings to preserve file state
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+
     const settingsLink = document.querySelector('a[href="/settings"]');
     if (settingsLink) {
         settingsLink.addEventListener('click', () => {
@@ -113,15 +120,52 @@ function restoreFileInfo() {
     // Button stays disabled until user selects a file again
 }
 
+function switchTab(tabName) {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabName);
+    });
+    
+    document.querySelectorAll('.upload-tab-content').forEach(content => {
+        content.classList.toggle('active', content.id === `${tabName}-${tabName === 'file' ? 'upload' : 'input'}-tab`);
+    });
+    
+    const startBtn = document.getElementById('start-generate-btn');
+    if (tabName === 'file') {
+        const fileInput = document.getElementById('novel-file');
+        startBtn.disabled = !fileInput.files[0];
+    } else {
+        const textInput = document.getElementById('novel-text-input');
+        startBtn.disabled = !textInput.value.trim();
+    }
+}
+
+function handleTextInput() {
+    const textInput = document.getElementById('novel-text-input');
+    const startBtn = document.getElementById('start-generate-btn');
+    startBtn.disabled = !textInput.value.trim();
+}
+
+function toggleUploadSection() {
+    const uploadSection = document.getElementById('upload-section');
+    uploadSection.style.display = uploadSection.style.display === 'none' ? 'block' : 'none';
+}
+
 async function handleStartGenerate() {
     const fileInput = document.getElementById('novel-file');
     const textInput = document.getElementById('novel-text-input');
     const apiKey = localStorage.getItem('api_key');
     const apiProvider = localStorage.getItem('api_provider') || 'qiniu';
     const customPrompt = document.getElementById('custom-prompt').value;
-
-    if (!fileInput.files[0] && !textInput.value.trim()) {
-        alert('请先选择小说文件或输入小说内容');
+    
+    const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
+    
+    if (activeTab === 'file' && !fileInput.files[0]) {
+        alert('请先选择小说文件');
+        return;
+    }
+    
+    if (activeTab === 'text' && !textInput.value.trim()) {
+        alert('请输入小说内容');
         return;
     }
 
@@ -133,22 +177,8 @@ async function handleStartGenerate() {
 
     let content = '';
     
-    if (textInput.value.trim()) {
+    if (activeTab === 'text') {
         content = textInput.value.trim();
-        checkAndProceed(content);
-    } else {
-        const file = fileInput.files[0];
-        const reader = new FileReader();
-        
-        reader.onload = async function(e) {
-            content = e.target.result;
-            checkAndProceed(content);
-        };
-        
-        reader.readAsText(file);
-    }
-    
-    async function checkAndProceed(content) {
         const wordCount = content.length;
         
         try {
@@ -170,25 +200,98 @@ async function handleStartGenerate() {
                 }
             }
             
-            proceedWithUpload(content);
+            proceedWithTextUpload(content);
         } catch (error) {
             alert('检查付费状态失败: ' + error.message);
         }
+        return;
     }
-    async function proceedWithUpload(novelContent) {
+    
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+    
+    reader.onload = async function(e) {
+        content = e.target.result;
+        const wordCount = content.length;
+        
+        try {
+            const checkResponse = await fetch('/api/check_payment', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ word_count: wordCount })
+            });
+            
+            const checkData = await checkResponse.json();
+            
+            if (checkData.requires_payment) {
+                const shouldContinue = await showPaymentDialog(checkData.payment_amount, wordCount);
+                if (!shouldContinue) {
+                    return;
+                }
+            }
+            
+            proceedWithFileUpload();
+        } catch (error) {
+            alert('检查付费状态失败: ' + error.message);
+        }
+    };
+    
+    reader.readAsText(file);
+    
+    async function proceedWithTextUpload(textContent) {
         const enableVideo = document.getElementById('enable-video').checked;
         const useStoryboard = document.getElementById('use-storyboard').checked;
         
         const formData = new FormData();
-        
-        if (fileInput.files[0]) {
-            formData.append('novel', fileInput.files[0]);
-        } else {
-            const blob = new Blob([novelContent], { type: 'text/plain' });
-            const file = new File([blob], 'input_text.txt', { type: 'text/plain' });
-            formData.append('novel', file);
+        const blob = new Blob([textContent], { type: 'text/plain' });
+        formData.append('novel', blob, 'novel.txt');
+        formData.append('api_key', apiKey);
+        formData.append('api_provider', apiProvider);
+        formData.append('enable_video', enableVideo ? 'true' : 'false');
+        formData.append('use_storyboard', useStoryboard ? 'true' : 'false');
+        if (customPrompt) {
+            formData.append('custom_prompt', customPrompt);
         }
+
+        document.getElementById('upload-section').classList.add('hidden');
+        document.getElementById('progress-section').classList.remove('hidden');
+
+        try {
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                credentials: 'include',
+                body: formData
+            });
+
+            const data = await response.json();
+            
+            if (response.ok) {
+                currentTaskId = data.task_id;
+                pollStatus();
+            } else {
+                if (response.status === 401) {
+                    alert('请先登录');
+                    window.location.href = '/login';
+                } else {
+                    alert('错误: ' + data.error);
+                    resetUploadSection();
+                }
+            }
+        } catch (error) {
+            alert('上传失败: ' + error.message);
+            resetUploadSection();
+        }
+    }
+    
+    async function proceedWithFileUpload() {
+        const enableVideo = document.getElementById('enable-video').checked;
+        const useStoryboard = document.getElementById('use-storyboard').checked;
         
+        const formData = new FormData();
+        formData.append('novel', fileInput.files[0]);
         formData.append('api_key', apiKey);
         formData.append('api_provider', apiProvider);
         formData.append('enable_video', enableVideo ? 'true' : 'false');
