@@ -61,6 +61,18 @@ def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qin
             progress_callback=update_status
         )
         
+        # 检查是否需要等待用户确认角色
+        if metadata.get('status') == 'waiting_for_confirmation':
+            # 角色生成完成，等待用户确认
+            generation_status[task_id] = {
+                'status': 'waiting_confirmation',
+                'progress': 35,
+                'message': 'waiting_for_character_confirmation',
+                'character_portraits': metadata.get('character_portraits', {}),
+                'character_designs': metadata.get('character_designs', {})
+            }
+            return
+        
         generated_scene_count = len(metadata.get('scenes', []))
         generated_content_size = 0
         for scene_info in metadata.get('scenes', []):
