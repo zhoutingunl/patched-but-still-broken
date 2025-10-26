@@ -2,6 +2,7 @@ import os
 import requests
 import time
 import hashlib
+import base64
 from typing import Optional, Dict
 import json
 
@@ -61,7 +62,26 @@ class VideoGenerator:
             "Content-Type": "application/json"
         }
         
-        instances = [{"prompt": prompt}]
+        # 使用图生视频功能：如果提供了图片路径，则加载图片并转为base64
+        instances = []
+        if image_path and os.path.exists(image_path):
+            try:
+                import base64
+                with open(image_path, 'rb') as img_file:
+                    img_data = base64.b64encode(img_file.read()).decode('utf-8')
+                instances = [{
+                    "prompt": prompt,
+                    "image": {
+                        "bytesBase64Encoded": img_data
+                    }
+                }]
+                print(f"使用图生视频模式，图片路径: {image_path}")
+            except Exception as e:
+                print(f"读取图片失败: {e}，将使用文生视频模式")
+                instances = [{"prompt": prompt}]
+        else:
+            instances = [{"prompt": prompt}]
+            print("未提供图片，使用文生视频模式")
         
         payload = {
             "instances": instances,
@@ -154,18 +174,39 @@ class VideoGenerator:
             return False
     
     def generate_video_from_scenes(self, scenes: list, 
-                                   default_keywords: str = None) -> Optional[str]:
+                                   default_keywords: str = None) -> list:
+        """
+        为每个场景的分镜图片生成视频
+        
+        Args:
+            scenes: 场景列表，每个场景包含 text 和 image_path
+            default_keywords: 默认关键词
+            
+        Returns:
+            生成的视频路径列表
+        """
         if not scenes:
-            return None
+            return []
         
-        combined_prompt = " ".join([s.get('text', '') for s in scenes[:3]])
+        video_paths = []
         
-        first_scene_image = None
-        if scenes and 'image_path' in scenes[0]:
-            first_scene_image = scenes[0]['image_path']
+        for idx, scene in enumerate(scenes):
+            scene_text = scene.get('text', scene.get('description', ''))
+            scene_image = scene.get('image_path')
+            
+            if not scene_image or not os.path.exists(scene_image):
+                print(f"场景 {idx} 缺少有效的图片路径，跳过视频生成")
+                video_paths.append(None)
+                continue
+            
+            print(f"为场景 {idx+1}/{len(scenes)} 生成视频...")
+            
+            video_path = self.generate_video(
+                prompt=scene_text,
+                image_path=scene_image,
+                default_keywords=default_keywords
+            )
+            
+            video_paths.append(video_path)
         
-        return self.generate_video(
-            prompt=combined_prompt,
-            image_path=first_scene_image,
-            default_keywords=default_keywords
-        )
+        return video_paths
