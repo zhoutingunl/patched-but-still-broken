@@ -33,11 +33,17 @@ def allowed_file(filename):
 
 def generate_anime_async(task_id, novel_path, max_scenes, api_key, provider='qiniu', custom_prompt=None, enable_video=False, use_ai_analysis=True, use_storyboard=True, user_id=None):
     def update_status(progress, message):
+        if task_id in generation_status and generation_status[task_id].get('status') == 'waiting_for_character_confirmation':
+            return
         generation_status[task_id] = {
             'status': 'processing',
             'progress': progress,
             'message': message
         }
+        if user_id and task_id in generation_status:
+            if 'resume_data' not in generation_status[task_id]:
+                generation_status[task_id]['resume_data'] = {}
+            generation_status[task_id]['resume_data']['user_id'] = user_id
     
     try:
         update_status(0, '正在解析小说...')
@@ -303,6 +309,162 @@ def serve_file(filepath):
     directory = os.path.dirname(filepath)
     filename = os.path.basename(filepath)
     return send_from_directory(directory, filename)
+
+@app.route('/api/characters/<task_id>', methods=['GET'])
+def get_characters(task_id):
+    if task_id not in generation_status:
+        return jsonify({'error': '任务不存在'}), 404
+    
+    status = generation_status[task_id]
+    characters = status.get('characters', [])
+    
+    return jsonify({
+        'characters': characters,
+        'status': status.get('status')
+    })
+
+@app.route('/api/characters/<task_id>/upload', methods=['POST'])
+def upload_character_image(task_id):
+    if task_id not in generation_status:
+        return jsonify({'error': '任务不存在'}), 404
+    
+    if 'character_image' not in request.files:
+        return jsonify({'error': '没有上传文件'}), 400
+    
+    file = request.files['character_image']
+    character_name = request.form.get('character_name')
+    
+    if not character_name:
+        return jsonify({'error': '缺少角色名称'}), 400
+    
+    if file.filename == '':
+        return jsonify({'error': '没有选择文件'}), 400
+    
+    character_dir = os.path.join(get_base_dir(), 'character_cache', task_id)
+    os.makedirs(character_dir, exist_ok=True)
+    
+    file_ext = os.path.splitext(file.filename)[1]
+    if not file_ext:
+        file_ext = '.png'
+    
+    safe_char_name = secure_filename(character_name)
+    file_path = os.path.join(character_dir, f"{safe_char_name}_custom{file_ext}")
+    file.save(file_path)
+    
+    status = generation_status[task_id]
+    characters = status.get('characters', [])
+    for char in characters:
+        if char['name'] == character_name:
+            char['custom_image_path'] = file_path
+            char['image_url'] = f"/api/file/{file_path}"
+            break
+    
+    return jsonify({
+        'message': '角色图片上传成功',
+        'character_name': character_name,
+        'image_url': f"/api/file/{file_path}"
+    })
+
+@app.route('/api/generation/resume/<task_id>', methods=['POST'])
+def resume_generation(task_id):
+    if task_id not in generation_status:
+        return jsonify({'error': '任务不存在'}), 404
+    
+    status = generation_status[task_id]
+    if status.get('status') != 'waiting_for_character_confirmation':
+        return jsonify({'error': '任务状态不正确'}), 400
+    
+    resume_data = status.get('resume_data')
+    if not resume_data:
+        return jsonify({'error': '缺少恢复数据'}), 400
+    
+    thread = threading.Thread(
+        target=resume_generation_async,
+        args=(task_id, resume_data)
+    )
+    thread.start()
+    
+    return jsonify({'message': '继续生成中'})
+
+def resume_generation_async(task_id, resume_data):
+    def update_status(progress, message):
+        generation_status[task_id] = {
+            **generation_status[task_id],
+            'status': 'processing',
+            'progress': progress,
+            'message': message
+        }
+    
+    try:
+        from anime_generator import AnimeGenerator
+        
+        generator_state = resume_data['generator_state']
+        novel_path = resume_data['novel_path']
+        max_scenes = resume_data['max_scenes']
+        generate_video = resume_data['generate_video']
+        use_storyboard = resume_data['use_storyboard']
+        
+        generator = AnimeGenerator(
+            openai_api_key=generator_state['api_key'],
+            provider=generator_state['provider'],
+            custom_prompt=generator_state.get('custom_prompt'),
+            enable_video=generator_state.get('enable_video', False),
+            use_ai_analysis=generator_state.get('use_ai_analysis', True),
+            session_id=task_id
+        )
+        
+        generator.char_mgr = resume_data['char_mgr']
+        generator.novel_analyzer = resume_data['novel_analyzer']
+        generator.storyboard_gen = resume_data['storyboard_gen']
+        
+        characters = generation_status[task_id].get('characters', [])
+        character_portraits = {}
+        for char in characters:
+            if char.get('custom_image_path'):
+                character_portraits[char['name']] = char['custom_image_path']
+            elif char.get('original_image_path'):
+                character_portraits[char['name']] = char['original_image_path']
+        
+        metadata = generator.continue_from_characters(
+            novel_path=novel_path,
+            max_scenes=max_scenes,
+            generate_video=generate_video,
+            use_storyboard=use_storyboard,
+            character_portraits=character_portraits,
+            analyzed_scenes=resume_data['analyzed_scenes'],
+            analyzed_characters=resume_data['analyzed_characters'],
+            character_designs=resume_data['character_designs'],
+            progress_callback=update_status
+        )
+        
+        generated_scene_count = len(metadata.get('scenes', []))
+        generated_content_size = 0
+        for scene_info in metadata.get('scenes', []):
+            scene_folder = scene_info['folder']
+            if os.path.exists(scene_folder):
+                for root, dirs, files in os.walk(scene_folder):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        generated_content_size += os.path.getsize(file_path)
+        
+        update_generation_stats(task_id, generated_scene_count, generated_content_size, metadata)
+        
+        user_id = resume_data.get('user_id')
+        if user_id:
+            increment_user_video_count(user_id)
+        
+        generation_status[task_id] = {
+            'status': 'completed',
+            'progress': 100,
+            'message': '生成完成',
+            'metadata': metadata
+        }
+    except Exception as e:
+        generation_status[task_id] = {
+            'status': 'error',
+            'progress': 0,
+            'message': str(e)
+        }
 
 
 def main(port):

@@ -340,6 +340,10 @@ function updateProgress(data) {
 
     progressFill.style.width = data.progress + '%';
     progressText.textContent = data.message;
+    
+    if (data.status === 'waiting_for_character_confirmation') {
+        showCharacterReview();
+    }
 }
 
 async function loadScenes() {
@@ -715,4 +719,132 @@ function showPaymentDialog(paymentAmount, wordCount) {
             resolve(false);
         });
     });
+}
+
+async function showCharacterReview() {
+    try {
+        const response = await fetch(`/api/characters/${currentTaskId}`, {
+            credentials: 'include'
+        });
+        const data = await response.json();
+        
+        if (response.ok) {
+            document.getElementById('progress-section').classList.add('hidden');
+            document.getElementById('character-review-section').classList.remove('hidden');
+            
+            displayCharacters(data.characters);
+            
+            const continueBtn = document.getElementById('continue-generation-btn');
+            const cancelBtn = document.getElementById('cancel-generation-btn');
+            
+            continueBtn.onclick = () => continueGeneration();
+            cancelBtn.onclick = () => cancelGeneration();
+        } else {
+            alert('加载角色失败: ' + data.error);
+        }
+    } catch (error) {
+        console.error('加载角色失败:', error);
+    }
+}
+
+function displayCharacters(characters) {
+    const characterGrid = document.getElementById('character-grid');
+    characterGrid.innerHTML = '';
+    
+    characters.forEach((char, index) => {
+        const card = document.createElement('div');
+        card.className = 'character-card';
+        card.innerHTML = `
+            <h3>${char.name}</h3>
+            <div class="character-image-wrapper">
+                <img src="${char.image_url}" alt="${char.name}" id="char-img-${index}">
+            </div>
+            <input type="file" 
+                   id="char-upload-${index}" 
+                   class="character-upload-input" 
+                   accept="image/*"
+                   data-character-name="${char.name}"
+                   data-index="${index}">
+            <button class="character-upload-btn" id="char-btn-${index}">
+                📤 上传自定义图片
+            </button>
+        `;
+        
+        characterGrid.appendChild(card);
+        
+        const uploadInput = document.getElementById(`char-upload-${index}`);
+        const uploadBtn = document.getElementById(`char-btn-${index}`);
+        
+        uploadBtn.addEventListener('click', () => {
+            uploadInput.click();
+        });
+        
+        uploadInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                await uploadCharacterImage(char.name, file, index);
+            }
+        });
+    });
+}
+
+async function uploadCharacterImage(characterName, file, index) {
+    const formData = new FormData();
+    formData.append('character_image', file);
+    formData.append('character_name', characterName);
+    
+    try {
+        const response = await fetch(`/api/characters/${currentTaskId}/upload`, {
+            method: 'POST',
+            credentials: 'include',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            const img = document.getElementById(`char-img-${index}`);
+            img.src = data.image_url + '?t=' + Date.now();
+            
+            const btn = document.getElementById(`char-btn-${index}`);
+            btn.textContent = '✅ 已替换';
+            btn.classList.add('uploaded');
+            
+            console.log(`角色 ${characterName} 图片已上传`);
+        } else {
+            alert('上传失败: ' + data.error);
+        }
+    } catch (error) {
+        alert('上传失败: ' + error.message);
+    }
+}
+
+async function continueGeneration() {
+    try {
+        const response = await fetch(`/api/generation/resume/${currentTaskId}`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            document.getElementById('character-review-section').classList.add('hidden');
+            document.getElementById('progress-section').classList.remove('hidden');
+            
+            setTimeout(pollStatus, 2000);
+        } else {
+            alert('继续生成失败: ' + data.error);
+        }
+    } catch (error) {
+        alert('继续生成失败: ' + error.message);
+    }
+}
+
+function cancelGeneration() {
+    if (confirm('确定要取消生成吗？')) {
+        resetUploadSection();
+        document.getElementById('character-review-section').classList.add('hidden');
+        document.getElementById('upload-section').classList.remove('hidden');
+    }
 }
