@@ -304,6 +304,145 @@ def serve_file(filepath):
     filename = os.path.basename(filepath)
     return send_from_directory(directory, filename)
 
+@app.route('/api/characters/<task_id>', methods=['GET'])
+def get_characters(task_id):
+    output_dir = os.path.join(get_base_dir(), "anime_output", task_id)
+    resume_path = os.path.join(output_dir, 'resume_data.json')
+    
+    if not os.path.exists(resume_path):
+        return jsonify({'error': '角色数据不存在'}), 404
+    
+    with open(resume_path, 'r', encoding='utf-8') as f:
+        resume_data = json.load(f)
+    
+    character_portraits = resume_data.get('character_portraits', {})
+    character_designs = resume_data.get('character_designs', {})
+    
+    characters = []
+    for char_name, portrait_path in character_portraits.items():
+        characters.append({
+            'name': char_name,
+            'image_url': f'/api/file/{portrait_path}',
+            'design': character_designs.get(char_name, {})
+        })
+    
+    return jsonify({'characters': characters})
+
+@app.route('/api/characters/<task_id>/upload', methods=['POST'])
+def upload_character_image(task_id):
+    if 'character_name' not in request.form:
+        return jsonify({'error': '缺少角色名称'}), 400
+    
+    if 'image' not in request.files:
+        return jsonify({'error': '没有上传图片'}), 400
+    
+    char_name = request.form['character_name']
+    image_file = request.files['image']
+    
+    if image_file.filename == '':
+        return jsonify({'error': '没有选择文件'}), 400
+    
+    output_dir = os.path.join(get_base_dir(), "anime_output", task_id)
+    os.makedirs(output_dir, exist_ok=True)
+    
+    filename = f"character_{char_name}_{secure_filename(image_file.filename)}"
+    image_path = os.path.join(output_dir, filename)
+    image_file.save(image_path)
+    
+    resume_path = os.path.join(output_dir, 'resume_data.json')
+    if os.path.exists(resume_path):
+        with open(resume_path, 'r', encoding='utf-8') as f:
+            resume_data = json.load(f)
+        
+        resume_data['character_portraits'][char_name] = image_path
+        
+        with open(resume_path, 'w', encoding='utf-8') as f:
+            json.dump(resume_data, f, ensure_ascii=False, indent=2)
+    
+    return jsonify({
+        'message': '图片上传成功',
+        'image_url': f'/api/file/{image_path}'
+    })
+
+@app.route('/api/generation/resume/<task_id>', methods=['POST'])
+def resume_generation(task_id):
+    output_dir = os.path.join(get_base_dir(), "anime_output", task_id)
+    resume_path = os.path.join(output_dir, 'resume_data.json')
+    
+    if not os.path.exists(resume_path):
+        return jsonify({'error': '恢复数据不存在'}), 404
+    
+    user_id = session.get('user_id')
+    thread = threading.Thread(
+        target=resume_generation_async,
+        args=(task_id, resume_path, user_id)
+    )
+    thread.start()
+    
+    return jsonify({
+        'message': '继续生成中',
+        'task_id': task_id
+    })
+
+def resume_generation_async(task_id, resume_path, user_id=None):
+    def update_status(progress, message):
+        generation_status[task_id] = {
+            'status': 'processing',
+            'progress': progress,
+            'message': message
+        }
+    
+    try:
+        with open(resume_path, 'r', encoding='utf-8') as f:
+            resume_data = json.load(f)
+        
+        api_key = os.getenv('OPENAI_API_KEY')
+        provider = 'qiniu'
+        enable_video = resume_data.get('generate_video', False)
+        
+        generator = AnimeGenerator(
+            openai_api_key=api_key,
+            provider=provider,
+            enable_video=enable_video,
+            use_ai_analysis=True,
+            session_id=task_id
+        )
+        
+        update_status(40, '继续生成分镜和场景...')
+        
+        metadata = generator.continue_from_characters(
+            resume_path=resume_path,
+            progress_callback=update_status
+        )
+        
+        generated_scene_count = len(metadata.get('scenes', []))
+        generated_content_size = 0
+        for scene_info in metadata.get('scenes', []):
+            scene_folder = scene_info['folder']
+            if os.path.exists(scene_folder):
+                for root, dirs, files in os.walk(scene_folder):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        generated_content_size += os.path.getsize(file_path)
+        
+        update_generation_stats(task_id, generated_scene_count, generated_content_size, metadata)
+        
+        if user_id:
+            increment_user_video_count(user_id)
+        
+        generation_status[task_id] = {
+            'status': 'completed',
+            'progress': 100,
+            'message': '生成完成',
+            'metadata': metadata
+        }
+    except Exception as e:
+        generation_status[task_id] = {
+            'status': 'error',
+            'progress': 0,
+            'message': str(e)
+        }
+
 
 def main(port):
     app.run(debug=True, host='0.0.0.0', port=port)

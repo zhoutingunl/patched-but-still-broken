@@ -115,6 +115,47 @@ class AnimeGenerator:
             if progress_callback:
                 progress_callback(35, f'角色设计完成：共生成 {len(character_portraits)} 个角色')
             
+            # 暂停以等待用户确认角色
+            print("\n=== 暂停：等待用户确认角色 ===")
+            if progress_callback:
+                progress_callback(35, 'waiting_for_character_confirmation')
+            
+            # 保存当前状态供恢复使用
+            resume_data = {
+                'novel_text': novel_text,
+                'analyzed_scenes': analyzed_scenes,
+                'analyzed_characters': analyzed_characters,
+                'character_portraits': character_portraits,
+                'character_designs': character_designs,
+                'max_scenes': max_scenes,
+                'generate_video': generate_video,
+                'use_storyboard': use_storyboard
+            }
+            
+            # 保存恢复数据
+            resume_path = os.path.join(self.output_dir, 'resume_data.json')
+            with open(resume_path, 'w', encoding='utf-8') as f:
+                # 不能直接序列化，需要转换路径
+                serializable_data = {
+                    'novel_text': novel_text,
+                    'analyzed_scenes': analyzed_scenes,
+                    'analyzed_characters': analyzed_characters,
+                    'character_portraits': character_portraits,
+                    'character_designs': character_designs,
+                    'max_scenes': max_scenes,
+                    'generate_video': generate_video,
+                    'use_storyboard': use_storyboard
+                }
+                json.dump(serializable_data, f, ensure_ascii=False, indent=2)
+            
+            # 返回角色信息，等待用户确认
+            return {
+                'status': 'waiting_for_confirmation',
+                'character_portraits': character_portraits,
+                'character_designs': character_designs,
+                'resume_path': resume_path
+            }
+            
             if use_storyboard and self.storyboard_gen:
                 print("\n=== 第三阶段：根据情节生成分镜脚本 ===")
                 if progress_callback:
@@ -224,6 +265,119 @@ class AnimeGenerator:
         
         metadata = {
             'novel_path': novel_path,
+            'total_scenes': len(all_scenes),
+            'characters': [char['name'] for char in self.char_mgr.get_all_characters()],
+            'use_ai_analysis': self.use_ai_analysis,
+            'character_portraits': character_portraits_data,
+            'scenes': [
+                {
+                    'scene_index': s['scene_index'],
+                    'folder': s['folder'],
+                    'characters': s['characters']
+                }
+                for s in all_scenes
+            ],
+            **storyboard_stats
+        }
+        
+        self._save_project_metadata(metadata)
+        
+        print(f"\n动漫生成完成！")
+        print(f"总场景数：{len(all_scenes)}")
+        print(f"输出目录：{self.output_dir}")
+        
+        return metadata
+    
+    def continue_from_characters(self, resume_path: str, updated_portraits: Dict[str, str] = None, progress_callback = None) -> Dict:
+        """从角色确认后继续生成"""
+        # 加载保存的状态
+        with open(resume_path, 'r', encoding='utf-8') as f:
+            resume_data = json.load(f)
+        
+        novel_text = resume_data['novel_text']
+        analyzed_scenes = resume_data['analyzed_scenes']
+        analyzed_characters = resume_data['analyzed_characters']
+        character_portraits = resume_data['character_portraits']
+        character_designs = resume_data['character_designs']
+        max_scenes = resume_data['max_scenes']
+        generate_video = resume_data['generate_video']
+        use_storyboard = resume_data['use_storyboard']
+        
+        # 如果用户上传了新图片，更新角色立绘
+        if updated_portraits:
+            character_portraits.update(updated_portraits)
+        
+        all_scenes = []
+        
+        if use_storyboard and self.storyboard_gen:
+            print("\n=== 第三阶段：根据情节生成分镜脚本 ===")
+            if progress_callback:
+                progress_callback(40, '正在生成分镜脚本...')
+            
+            storyboard_result = self.storyboard_gen.generate_storyboard_in_chunks(
+                novel_text, 
+                analyzed_characters
+            )
+            
+            storyboard_panels = storyboard_result.get('storyboard', [])
+            success_count = storyboard_result.get('success_count', 0)
+            failure_count = storyboard_result.get('failure_count', 0)
+            print(f"分镜生成完成，共 {len(storyboard_panels)} 个分镜（成功: {success_count}, 失败: {failure_count}）")
+            if progress_callback:
+                progress_callback(50, f'分镜生成完成：共 {len(storyboard_panels)} 个分镜（成功: {success_count}, 失败: {failure_count}）')
+            
+            print("\n=== 第四阶段：根据分镜生成画面 ===")
+            panels_to_process = storyboard_panels
+            
+            if max_scenes:
+                panels_to_process = storyboard_panels[:max_scenes]
+            
+            for panel_idx, panel_info in enumerate(panels_to_process):
+                print(f"\n生成分镜 {panel_idx + 1}/{len(panels_to_process)}...")
+                if progress_callback:
+                    scene_progress = 50 + int((panel_idx / len(panels_to_process)) * 45)
+                    progress_callback(scene_progress, f'正在生成分镜 {panel_idx + 1}/{len(panels_to_process)}...')
+                
+                scene_metadata = self.scene_composer.create_scene_from_storyboard(
+                    scene_index=panel_idx,
+                    panel_info=panel_info,
+                    character_designs={name: design.get('visual_keywords', '') for name, design in character_designs.items()},
+                    generate_video=generate_video
+                )
+                
+                all_scenes.append(scene_metadata)
+        else:
+            print("\n=== 第三阶段：根据场景生成画面（传统模式）===")
+            scenes_to_process = analyzed_scenes
+            
+            if max_scenes:
+                scenes_to_process = analyzed_scenes[:max_scenes]
+            
+            for scene_idx, scene_info in enumerate(scenes_to_process):
+                print(f"\n生成场景 {scene_idx + 1}/{len(scenes_to_process)}...")
+                if progress_callback:
+                    scene_progress = 50 + int((scene_idx / len(scenes_to_process)) * 45)
+                    progress_callback(scene_progress, f'正在生成场景 {scene_idx + 1}/{len(scenes_to_process)}...')
+                
+                scene_metadata = self.scene_composer.create_scene_with_ai_analysis(
+                    scene_index=scene_idx,
+                    scene_info=scene_info,
+                    generate_video=generate_video
+                )
+                
+                all_scenes.append(scene_metadata)
+        
+        character_portraits_data = character_portraits
+        
+        storyboard_stats = {}
+        if use_storyboard and 'success_count' in locals():
+            storyboard_stats = {
+                'storyboard_success_count': success_count,
+                'storyboard_failure_count': failure_count
+            }
+        
+        metadata = {
+            'novel_path': 'resumed',
             'total_scenes': len(all_scenes),
             'characters': [char['name'] for char in self.char_mgr.get_all_characters()],
             'use_ai_analysis': self.use_ai_analysis,

@@ -319,7 +319,9 @@ async function pollStatus() {
         if (response.ok) {
             updateProgress(data);
 
-            if (data.status === 'processing') {
+            if (data.message === 'waiting_for_character_confirmation') {
+                await showCharacterReview();
+            } else if (data.status === 'processing') {
                 setTimeout(pollStatus, 2000);
             } else if (data.status === 'completed') {
                 await loadScenes();
@@ -631,6 +633,99 @@ async function loadPlayback(sessionId) {
         }
     } catch (error) {
         alert('加载作品失败: ' + error.message);
+    }
+}
+
+async function showCharacterReview() {
+    try {
+        const response = await fetch(`/api/characters/${currentTaskId}`, {
+            credentials: 'include'
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+            document.getElementById('progress-section').classList.add('hidden');
+            document.getElementById('character-review-section').classList.remove('hidden');
+            displayCharacters(data.characters);
+        } else {
+            alert('加载角色失败: ' + data.error);
+        }
+    } catch (error) {
+        alert('加载角色失败: ' + error.message);
+    }
+}
+
+function displayCharacters(characters) {
+    const container = document.getElementById('character-grid');
+    container.innerHTML = '';
+
+    characters.forEach(char => {
+        const card = document.createElement('div');
+        card.className = 'character-card';
+        card.innerHTML = `
+            <img src="${char.image_url}" alt="${char.name}" class="character-image">
+            <h3 class="character-name">${char.name}</h3>
+            <input type="file" id="upload-${char.name}" accept="image/*" style="display: none;" onchange="uploadCharacterImage('${char.name}', this)">
+            <button class="btn btn-secondary" onclick="document.getElementById('upload-${char.name}').click()">替换图片</button>
+        `;
+        container.appendChild(card);
+    });
+}
+
+async function uploadCharacterImage(charName, fileInput) {
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('character_name', charName);
+    formData.append('image', file);
+
+    try {
+        const response = await fetch(`/api/characters/${currentTaskId}/upload`, {
+            method: 'POST',
+            credentials: 'include',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            const img = document.querySelector(`#upload-${charName}`).parentElement.querySelector('.character-image');
+            img.src = data.image_url;
+            alert(`角色 ${charName} 的图片已更新`);
+        } else {
+            alert('上传失败: ' + data.error);
+        }
+    } catch (error) {
+        alert('上传失败: ' + error.message);
+    }
+}
+
+async function continueGeneration() {
+    try {
+        const response = await fetch(`/api/generation/resume/${currentTaskId}`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            document.getElementById('character-review-section').classList.add('hidden');
+            document.getElementById('progress-section').classList.remove('hidden');
+            pollStatus();
+        } else {
+            alert('继续生成失败: ' + data.error);
+        }
+    } catch (error) {
+        alert('继续生成失败: ' + error.message);
+    }
+}
+
+function cancelGeneration() {
+    if (confirm('确定要取消生成吗？')) {
+        document.getElementById('character-review-section').classList.add('hidden');
+        resetUploadSection();
     }
 }
 
