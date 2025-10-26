@@ -7,11 +7,12 @@ import json
 
 
 class VideoGenerator:
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, base_image_url: str = None):
         self.api_key = api_key
         self.base_url = "https://openai.qiniu.com/v1"
         self.cache_dir = "video_cache"
         os.makedirs(self.cache_dir, exist_ok=True)
+        self.base_image_url = base_image_url or os.getenv('BASE_IMAGE_URL', 'http://localhost')
         
     def generate_video(self, 
                       prompt: str,
@@ -61,7 +62,18 @@ class VideoGenerator:
             "Content-Type": "application/json"
         }
         
-        instances = [{"prompt": prompt}]
+        instance = {"prompt": prompt}
+        
+        if image_path:
+            image_uri = self._convert_path_to_uri(image_path)
+            mime_type = self._get_mime_type(image_path)
+            instance["image"] = {
+                "uri": image_uri,
+                "mimeType": mime_type
+            }
+            print(f"使用图片 URI: {image_uri}")
+        
+        instances = [instance]
         
         payload = {
             "instances": instances,
@@ -152,6 +164,25 @@ class VideoGenerator:
         except Exception as e:
             print(f"下载视频失败: {e}")
             return False
+    
+    def _convert_path_to_uri(self, image_path: str) -> str:
+        if image_path.startswith('http://') or image_path.startswith('https://'):
+            return image_path
+        
+        abs_path = os.path.abspath(image_path)
+        
+        return f"{self.base_image_url}/api/file/{abs_path}"
+    
+    def _get_mime_type(self, image_path: str) -> str:
+        ext = os.path.splitext(image_path)[1].lower()
+        mime_types = {
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.png': 'image/png',
+            '.gif': 'image/gif',
+            '.webp': 'image/webp'
+        }
+        return mime_types.get(ext, 'image/jpeg')
     
     def generate_video_from_scenes(self, scenes: list, 
                                    default_keywords: str = None) -> Optional[str]:

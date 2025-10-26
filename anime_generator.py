@@ -27,7 +27,8 @@ class AnimeGenerator:
         
         self.video_gen = None
         if enable_video:
-            self.video_gen = VideoGenerator(self.api_key)
+            base_image_url = os.getenv('BASE_IMAGE_URL', 'http://localhost')
+            self.video_gen = VideoGenerator(self.api_key, base_image_url=base_image_url)
         
         self.novel_analyzer = None
         self.storyboard_gen = None
