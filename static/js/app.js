@@ -588,7 +588,6 @@ function displayHistory(history) {
     html += '<thead><tr style="background: #f0f0f0;">';
     html += '<th style="padding: 10px; border: 1px solid #ddd;">文件名</th>';
     html += '<th style="padding: 10px; border: 1px solid #ddd;">上传时间</th>';
-    html += '<th style="padding: 10px; border: 1px solid #ddd;">操作</th>';
     html += '</tr></thead><tbody>';
     
     history.forEach(record => {
@@ -604,13 +603,6 @@ function displayHistory(history) {
         html += '<tr>';
         html += `<td style="padding: 10px; border: 1px solid #ddd;">${record.filename || '-'}</td>`;
         html += `<td style="padding: 10px; border: 1px solid #ddd;">${uploadTime}</td>`;
-        html += `<td style="padding: 10px; border: 1px solid #ddd;">`;
-        if (record.session_id && record.generated_scene_count > 0) {
-            html += `<a href="#" onclick="loadPlayback('${record.session_id}'); return false;" style="color: #007bff; text-decoration: none;">查看作品</a>`;
-        } else {
-            html += '<span style="color: #999;">生成中</span>';
-        }
-        html += `</td>`;
         html += '</tr>';
     });
     
