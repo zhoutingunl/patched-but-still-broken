@@ -2,6 +2,8 @@
 
 自动根据小说生成动漫，包含图片、文字和语音配音。 公网在线DEMO地址 https://n2v.qbox.net
 
+在线DEMO 地址https://v.douyin.com/5xbGSMy6v_g
+
 ## 功能特点
 
 - 🤖 **智能 AI 分析**：使用 DeepSeek AI 深度分析小说文本，提取场景、角色、对话和叙述
