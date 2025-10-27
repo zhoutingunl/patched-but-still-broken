@@ -320,7 +320,15 @@ class FlaskAppWrapper:
     def serve_file(self, filepath):
         directory = os.path.dirname(filepath)
         filename = os.path.basename(filepath)
-        return send_from_directory(directory, filename)
+        
+        if filename.endswith('.mp3'):
+            return send_from_directory(directory, filename, mimetype='audio/mpeg')
+        elif filename.endswith('.mp4'):
+            return send_from_directory(directory, filename, mimetype='video/mp4')
+        elif filename.endswith('.png'):
+            return send_from_directory(directory, filename, mimetype='image/png')
+        else:
+            return send_from_directory(directory, filename)
     
     def download_content(self, task_id):
         metadata = None

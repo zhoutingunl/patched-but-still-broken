@@ -8,6 +8,7 @@ let isVideoMode = false;
 
 document.addEventListener('DOMContentLoaded', function() {
     audioPlayer = document.getElementById('audio-player');
+    audioPlayer.volume = 0.7;
     checkAuthentication();
     initializeEventListeners();
     restoreFileInfo();
@@ -470,6 +471,7 @@ function displayScene(index) {
 
     if (!isVideoMode) {
         audioPlayer.src = scene.audio_url;
+        audioPlayer.load();
     }
 
     const sceneCard = document.getElementById('scene-card');
@@ -495,15 +497,29 @@ function startPlayback() {
     if (isVideoMode && videoPlayer) {
         videoPlayer.play().catch(error => {
             console.error('视频播放失败:', error);
+            alert('视频播放失败: ' + error.message);
             isPlaying = false;
             document.getElementById('play-pause-btn').textContent = '▶️ 播放';
         });
     } else {
-        audioPlayer.play().catch(error => {
-            console.error('音频播放失败:', error);
-            isPlaying = false;
-            document.getElementById('play-pause-btn').textContent = '▶️ 播放';
-        });
+        if (audioPlayer.readyState >= 2) {
+            audioPlayer.play().catch(error => {
+                console.error('音频播放失败:', error);
+                alert('音频播放失败: ' + error.message + '\n请检查音频文件是否存在');
+                isPlaying = false;
+                document.getElementById('play-pause-btn').textContent = '▶️ 播放';
+            });
+        } else {
+            audioPlayer.addEventListener('canplay', function playWhenReady() {
+                audioPlayer.removeEventListener('canplay', playWhenReady);
+                audioPlayer.play().catch(error => {
+                    console.error('音频播放失败:', error);
+                    alert('音频播放失败: ' + error.message + '\n请检查音频文件是否存在');
+                    isPlaying = false;
+                    document.getElementById('play-pause-btn').textContent = '▶️ 播放';
+                });
+            });
+        }
     }
 }
 
