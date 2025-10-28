@@ -13,7 +13,7 @@ from video_merger import VideoMerger
 from common import get_base_dir
 from flask import Flask, render_template, request, jsonify, send_from_directory, session, redirect, url_for, send_file
 from flask_cors import CORS
-from statistics_db import insert_statistics, update_generation_stats, get_statistics
+from statistics_db import insert_statistics, update_generation_stats, get_statistics, delete_statistics
 from user_auth import register_user, login_user, get_user_by_id, get_user_video_count, increment_user_video_count
 
 
@@ -51,6 +51,7 @@ class FlaskAppWrapper:
         self.app_.add_url_rule('/api/scenes/<task_id>', view_func=self.get_scenes, methods=['GET'])
         self.app_.add_url_rule('/api/file/<path:filepath>', view_func=self.serve_file, methods=['GET'])
         self.app_.add_url_rule('/api/download/<task_id>', view_func=self.download_content, methods=['GET'])
+        self.app_.add_url_rule('/api/delete_history/<session_id>', view_func=self.delete_history, methods=['DELETE'])
         self.app_.add_url_rule('/get_apk', view_func=self.get_apk, methods=['GET'])
 
     def get_apk(self):
@@ -181,6 +182,18 @@ class FlaskAppWrapper:
         username = session.get('username')
         history = get_statistics(username=username, limit=10)
         return jsonify({'history': history}), 200
+    
+    def delete_history(self, session_id):
+        if 'user_id' not in session:
+            return jsonify({'error': '请先登录'}), 401
+        
+        username = session.get('username')
+        success = delete_statistics(session_id, username)
+        
+        if success:
+            return jsonify({'message': '删除成功'}), 200
+        else:
+            return jsonify({'error': '删除失败或记录不存在'}), 404
     
     def check_payment(self):
         if 'user_id' not in session:
@@ -385,5 +398,5 @@ def main(port):
     WSGIServer(('0.0.0.0', server.port_), server.app_).serve_forever()
 
 if __name__ == '__main__':
-    port = 80 if sys.platform == 'linux' else 5000
+    port = 80 if sys.platform == 'linux' else 5005
     main(port)

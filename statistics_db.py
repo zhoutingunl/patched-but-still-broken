@@ -72,15 +72,41 @@ def get_statistics(session_id=None, username=None, limit=None):
         if session_id:
             cursor.execute('SELECT * FROM generation_statistics WHERE session_id = %s', (session_id,))
             result = cursor.fetchone()
+            if result and result.get('created_at'):
+                result['created_at'] = result['created_at'].strftime('%Y-%m-%d %H:%M:%S')
             return result
         elif username:
             query = 'SELECT * FROM generation_statistics WHERE username = %s ORDER BY created_at DESC'
             if limit:
                 query += f' LIMIT {limit}'
             cursor.execute(query, (username,))
-            return cursor.fetchall()
+            results = cursor.fetchall()
+            # 转换时间格式为字符串
+            for result in results:
+                if result.get('created_at'):
+                    result['created_at'] = result['created_at'].strftime('%Y-%m-%d %H:%M:%S')
+            return results
         else:
             cursor.execute('SELECT * FROM generation_statistics ORDER BY created_at DESC')
-            return cursor.fetchall()
+            results = cursor.fetchall()
+            # 转换时间格式为字符串
+            for result in results:
+                if result.get('created_at'):
+                    result['created_at'] = result['created_at'].strftime('%Y-%m-%d %H:%M:%S')
+            return results
+
+def delete_statistics(session_id, username=None):
+    """删除指定的统计记录"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        if username:
+            # 验证记录属于该用户
+            cursor.execute('SELECT id FROM generation_statistics WHERE session_id = %s AND username = %s', (session_id, username))
+            if not cursor.fetchone():
+                return False
+        
+        cursor.execute('DELETE FROM generation_statistics WHERE session_id = %s', (session_id,))
+        conn.commit()
+        return cursor.rowcount > 0
 
 init_db()
