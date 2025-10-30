@@ -21,6 +21,7 @@ function initializeEventListeners() {
     const logoutBtn = document.getElementById('logout-btn');
     const downloadBtn = document.getElementById('download-btn');
     const backHomeBtn = document.getElementById('back-home-btn');
+    const generateAnimeBtn = document.getElementById('generate-anime-btn');
 
     if (playPauseBtn) playPauseBtn.addEventListener('click', togglePlayPause);
     if (prevBtn) prevBtn.addEventListener('click', () => navigateScene(-1));
@@ -30,6 +31,7 @@ function initializeEventListeners() {
     if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
     if (downloadBtn) downloadBtn.addEventListener('click', handleDownload);
     if (backHomeBtn) backHomeBtn.addEventListener('click', () => window.location.href = '/');
+    if (generateAnimeBtn) generateAnimeBtn.addEventListener('click', handleGenerateAnime);
 
     if (audioPlayer) audioPlayer.addEventListener('ended', handleAudioEnded);
 }
@@ -250,11 +252,25 @@ async function checkAuthentication() {
         if (data.user) {
             document.getElementById('username-display').textContent = `欢迎，${data.user.username}`;
             document.getElementById('logout-btn').style.display = 'inline-block';
+        }
+    } catch (error) {
+        console.error('验证失败:', error);
+    }
+}
+
+async function handleGenerateAnime() {
+    try {
+        const response = await fetch('/api/current_user', {
+            credentials: 'include'
+        });
+        const data = await response.json();
+        
+        if (data.user) {
+            window.location.href = '/home';
         } else {
             window.location.href = '/login';
         }
     } catch (error) {
-        console.error('验证失败:', error);
         window.location.href = '/login';
     }
 }

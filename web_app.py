@@ -38,6 +38,7 @@ class FlaskAppWrapper:
     
     def _register_routes(self):
         self.app_.add_url_rule('/', view_func=self.index, methods=['GET'])
+        self.app_.add_url_rule('/home', view_func=self.home_page, methods=['GET'])
         self.app_.add_url_rule('/login', view_func=self.login_page, methods=['GET'])
         self.app_.add_url_rule('/settings', view_func=self.settings, methods=['GET'])
         self.app_.add_url_rule('/square', view_func=self.square_page, methods=['GET'])
@@ -129,6 +130,9 @@ class FlaskAppWrapper:
             }
     
     def index(self):
+        return redirect(url_for('square_page'))
+    
+    def home_page(self):
         return render_template('index.html')
     
     def login_page(self):
