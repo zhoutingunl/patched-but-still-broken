@@ -24,6 +24,7 @@ function initializeEventListeners() {
     const returnHomeBtn = document.getElementById('return-home-btn');
     const logoutBtn = document.getElementById('logout-btn');
     const uploadNovelBtn = document.getElementById('upload-novel-btn');
+    const downloadBtn = document.getElementById('download-btn');
     const novelTextInput = document.getElementById('novel-text-input');
     const returnHomeBtnList = document.getElementById('return-home-btn-list');
 
@@ -38,6 +39,7 @@ function initializeEventListeners() {
     if (returnHomeBtn) returnHomeBtn.addEventListener('click', returnToHome);
     if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
     if (uploadNovelBtn) uploadNovelBtn.addEventListener('click', showUploadSection);
+    if (downloadBtn) downloadBtn.addEventListener('click', handleDownload);
     if (novelTextInput) novelTextInput.addEventListener('input', handleTextInput);
     if (returnHomeBtnList) returnHomeBtnList.addEventListener('click', returnToHome);
 
@@ -681,6 +683,103 @@ async function loadPlayback(sessionId, inputText = null) {
         }
     } catch (error) {
         alert('加载作品失败: ' + error.message);
+    }
+}
+
+async function handleDownload() {
+    if (!currentTaskId || scenes.length === 0) {
+        alert('没有可下载的内容');
+        return;
+    }
+
+    const progressOverlay = document.createElement('div');
+    progressOverlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+    `;
+    
+    const progressBox = document.createElement('div');
+    progressBox.style.cssText = `
+        background: white;
+        padding: 40px;
+        border-radius: 10px;
+        text-align: center;
+        min-width: 300px;
+    `;
+    
+    progressBox.innerHTML = `
+        <h3 style="margin-top: 0; color: #333;">正在生成视频...</h3>
+        <div style="margin: 20px 0;">
+            <div style="width: 100%; height: 30px; background: #f0f0f0; border-radius: 15px; overflow: hidden;">
+                <div id="download-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #4CAF50, #45a049); transition: width 0.3s;"></div>
+            </div>
+        </div>
+        <p id="download-progress-text" style="color: #666; margin: 10px 0;">正在合并场景...</p>
+    `;
+    
+    progressOverlay.appendChild(progressBox);
+    document.body.appendChild(progressOverlay);
+    
+    const progressBar = progressBox.querySelector('#download-progress-bar');
+    const progressText = progressBox.querySelector('#download-progress-text');
+    
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+        if (progress < 90) {
+            progress += Math.random() * 15;
+            if (progress > 90) progress = 90;
+            progressBar.style.width = progress + '%';
+            
+            if (progress < 30) {
+                progressText.textContent = '正在合并场景...';
+            } else if (progress < 60) {
+                progressText.textContent = '正在处理视频...';
+            } else {
+                progressText.textContent = '即将完成...';
+            }
+        }
+    }, 500);
+
+    try {
+        const downloadUrl = `/api/download/${currentTaskId}`;
+        
+        const response = await fetch(downloadUrl, {
+            credentials: 'include'
+        });
+        
+        if (!response.ok) {
+            throw new Error('下载失败');
+        }
+        
+        const blob = await response.blob();
+        
+        clearInterval(progressInterval);
+        progressBar.style.width = '100%';
+        progressText.textContent = '下载完成！';
+        
+        setTimeout(() => {
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `anime_${currentTaskId}.mp4`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+            
+            document.body.removeChild(progressOverlay);
+        }, 500);
+    } catch (error) {
+        clearInterval(progressInterval);
+        document.body.removeChild(progressOverlay);
+        alert('下载失败: ' + error.message);
     }
 }
 
