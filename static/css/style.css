@@ -7,129 +7,236 @@
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 
                  'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    min-height: 100vh;
-    padding: 0;
-    padding-top: 60px;
+    background: #f5f5f5;
     color: #333;
+    overflow: hidden;
 }
 
-.top-nav {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    padding: 10px 20px;
+.main-layout {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    z-index: 1000;
+    height: 100vh;
+    width: 100vw;
 }
 
-.nav-left {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.nav-right {
-    display: flex;
-    align-items: center;
-}
-
-.username-display {
-    font-size: 14px;
-    color: #333;
-    font-weight: 600;
-    padding: 0 10px;
-}
-
-.nav-btn {
-    padding: 8px 16px;
-    font-size: 14px;
-    font-weight: 600;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    background: #667eea;
-    color: white;
-    transition: all 0.3s ease;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-}
-
-.nav-btn:hover {
-    background: #5568d3;
-    transform: translateY(-1px);
-}
-
-.qr-code-mini {
-    text-align: center;
-    background-color: white;
-    padding: 8px;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+.sidebar {
+    width: 280px;
+    background: white;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    border-right: 1px solid #e0e0e0;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
 }
 
-.qr-code-mini img {
-    width: 60px;
-    height: 60px;
-    display: block;
+.sidebar-header {
+    padding: 20px;
+    border-bottom: 1px solid #e0e0e0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
-.qr-code-mini p {
-    margin-top: 4px;
-    font-size: 10px;
-    color: #666;
+.sidebar-header h2 {
+    color: white;
+    font-size: 1.3em;
+    margin: 0;
+}
+
+.history-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+.history-item {
+    padding: 12px 15px;
+    margin-bottom: 8px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+}
+
+.history-item:hover {
+    background: #e9ecef;
+    border-left-color: #667eea;
+    transform: translateX(3px);
+}
+
+.history-item.active {
+    background: #e7e9fc;
+    border-left-color: #667eea;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+}
+
+.history-item-title {
+    font-size: 0.95em;
+    color: #333;
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
+.history-item-time {
+    font-size: 0.75em;
+    color: #999;
 }
 
-header {
+.sidebar-footer {
+    border-top: 1px solid #e0e0e0;
+    padding: 15px;
+    background: #f8f9fa;
+}
+
+.footer-link {
+    display: block;
+    padding: 10px;
     text-align: center;
+    background: #667eea;
     color: white;
-    margin-bottom: 40px;
-    padding: 30px 20px;
+    text-decoration: none;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    transition: background 0.3s ease;
 }
 
-header h1 {
-    font-size: 3em;
-    margin-bottom: 10px;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+.footer-link:hover {
+    background: #5568d3;
 }
 
-.subtitle {
+.qr-codes {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.qr-item {
+    text-align: center;
+    background: white;
+    padding: 8px;
+    border-radius: 6px;
+    flex: 1;
+}
+
+.qr-item img {
+    width: 60px;
+    height: 60px;
+    display: block;
+    margin: 0 auto;
+}
+
+.qr-item p {
+    margin-top: 4px;
+    font-size: 0.7em;
+    color: #666;
+}
+
+.content-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    overflow: hidden;
+}
+
+.content-header {
+    padding: 15px 25px;
+    background: white;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.username-display {
+    font-size: 0.95em;
+    color: #333;
+    font-weight: 600;
+}
+
+.header-btn {
+    padding: 6px 14px;
+    font-size: 0.85em;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background: white;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.header-btn:hover {
+    background: #f5f5f5;
+    border-color: #bbb;
+}
+
+.btn-upload {
+    padding: 10px 20px;
+    font-size: 1em;
+    font-weight: 600;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.btn-upload:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.welcome-section {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+}
+
+.welcome-content {
+    text-align: center;
+    padding: 40px;
+}
+
+.welcome-content h1 {
+    font-size: 2.5em;
+    color: #667eea;
+    margin-bottom: 15px;
+}
+
+.welcome-content .subtitle {
     font-size: 1.2em;
-    opacity: 0.95;
+    color: #666;
+    margin-bottom: 20px;
+}
+
+.welcome-content .hint {
+    font-size: 0.95em;
+    color: #999;
+    font-style: italic;
 }
 
 .section {
-    background: white;
-    border-radius: 20px;
-    padding: 30px;
-    margin-bottom: 30px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-    transition: all 0.3s ease;
+    flex: 1;
+    overflow-y: auto;
+    padding: 25px;
 }
 
-.section:hover {
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25);
+.upload-container {
+    max-width: 800px;
+    margin: 0 auto;
 }
 
-.section h2 {
+.upload-container h2 {
     color: #667eea;
     margin-bottom: 20px;
     font-size: 1.8em;
@@ -138,7 +245,7 @@ header h1 {
 }
 
 .hidden {
-    display: none;
+    display: none !important;
 }
 
 .upload-area {
@@ -444,9 +551,69 @@ header h1 {
     margin-bottom: 10px;
 }
 
+.context-menu {
+    position: fixed;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 10000;
+    min-width: 120px;
+}
+
+.context-menu-item {
+    padding: 10px 15px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    font-size: 0.9em;
+}
+
+.context-menu-item:hover {
+    background: #f5f5f5;
+}
+
+.context-menu-item:first-child {
+    border-radius: 6px 6px 0 0;
+}
+
+.context-menu-item:last-child {
+    border-radius: 0 0 6px 6px;
+}
+
 @media (max-width: 768px) {
-    header h1 {
-        font-size: 2em;
+    .main-layout {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        height: auto;
+        max-height: 40vh;
+        border-right: none;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .sidebar-footer .qr-codes {
+        flex-direction: row;
+    }
+
+    .qr-item img {
+        width: 40px;
+        height: 40px;
+    }
+
+    .content-header {
+        flex-direction: column;
+        gap: 10px;
+        align-items: stretch;
+    }
+
+    .header-left {
+        justify-content: center;
+    }
+
+    .btn-upload {
+        width: 100%;
     }
 
     .settings {
@@ -468,18 +635,16 @@ header h1 {
     #volume-slider {
         width: 100%;
     }
-    
-    .nav-left {
-        gap: 5px;
+
+    .welcome-content h1 {
+        font-size: 1.8em;
     }
-    
-    .nav-btn {
-        padding: 6px 10px;
-        font-size: 12px;
+
+    .welcome-content .subtitle {
+        font-size: 1em;
     }
-    
-    .qr-code-mini img {
-        width: 40px;
-        height: 40px;
+
+    .welcome-content .hint {
+        font-size: 0.85em;
     }
 }

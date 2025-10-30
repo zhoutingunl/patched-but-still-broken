@@ -5,12 +5,13 @@ let isPlaying = false;
 let audioPlayer = null;
 let videoPlayer = null;
 let isVideoMode = false;
+let currentContextMenuSessionId = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     audioPlayer = document.getElementById('audio-player');
     checkAuthentication();
     initializeEventListeners();
-    restoreFileInfo();
+    loadHistoryList();
 });
 
 function initializeEventListeners() {
@@ -24,8 +25,7 @@ function initializeEventListeners() {
     const volumeSlider = document.getElementById('volume-slider');
     const returnHomeBtn = document.getElementById('return-home-btn');
     const logoutBtn = document.getElementById('logout-btn');
-    const historyBtn = document.getElementById('history-btn');
-    const backToUploadBtn = document.getElementById('back-to-upload-btn');
+    const uploadNovelBtn = document.getElementById('upload-novel-btn');
     const downloadBtn = document.getElementById('download-btn');
     const novelTextInput = document.getElementById('novel-text-input');
     const singleViewBtn = document.getElementById('single-view-btn');
@@ -34,53 +34,26 @@ function initializeEventListeners() {
     const downloadBtnList = document.getElementById('download-btn-list');
     const returnHomeBtnList = document.getElementById('return-home-btn-list');
 
-    selectFileBtn.addEventListener('click', () => novelFile.click());
-    
-    novelFile.addEventListener('change', handleFileSelect);
-    startGenerateBtn.addEventListener('click', handleStartGenerate);
-    playPauseBtn.addEventListener('click', togglePlayPause);
-    prevBtn.addEventListener('click', () => navigateScene(-1));
-    nextBtn.addEventListener('click', () => navigateScene(1));
-    stopBtn.addEventListener('click', stopPlayback);
-    volumeSlider.addEventListener('input', handleVolumeChange);
-    if (returnHomeBtn) {
-        returnHomeBtn.addEventListener('click', returnToHome);
-    }
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', handleLogout);
-    }
-    if (historyBtn) {
-        historyBtn.addEventListener('click', showHistory);
-    }
-    if (backToUploadBtn) {
-        backToUploadBtn.addEventListener('click', () => {
-            document.getElementById('history-section').style.display = 'none';
-            document.getElementById('upload-section').style.display = 'block';
-        });
-    }
-    if (downloadBtn) {
-        downloadBtn.addEventListener('click', handleDownload);
-    }
-    if (novelTextInput) {
-        novelTextInput.addEventListener('input', handleTextInput);
-    }
-    if (singleViewBtn) {
-        singleViewBtn.addEventListener('click', () => switchView('single'));
-    }
-    if (listViewBtn) {
-        listViewBtn.addEventListener('click', () => switchView('list'));
-    }
-    if (playAllVideosBtn) {
-        playAllVideosBtn.addEventListener('click', playAllVideos);
-    }
-    if (downloadBtnList) {
-        downloadBtnList.addEventListener('click', handleDownload);
-    }
-    if (returnHomeBtnList) {
-        returnHomeBtnList.addEventListener('click', returnToHome);
-    }
+    if (selectFileBtn) selectFileBtn.addEventListener('click', () => novelFile.click());
+    if (novelFile) novelFile.addEventListener('change', handleFileSelect);
+    if (startGenerateBtn) startGenerateBtn.addEventListener('click', handleStartGenerate);
+    if (playPauseBtn) playPauseBtn.addEventListener('click', togglePlayPause);
+    if (prevBtn) prevBtn.addEventListener('click', () => navigateScene(-1));
+    if (nextBtn) nextBtn.addEventListener('click', () => navigateScene(1));
+    if (stopBtn) stopBtn.addEventListener('click', stopPlayback);
+    if (volumeSlider) volumeSlider.addEventListener('input', handleVolumeChange);
+    if (returnHomeBtn) returnHomeBtn.addEventListener('click', returnToHome);
+    if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+    if (uploadNovelBtn) uploadNovelBtn.addEventListener('click', showUploadSection);
+    if (downloadBtn) downloadBtn.addEventListener('click', handleDownload);
+    if (novelTextInput) novelTextInput.addEventListener('input', handleTextInput);
+    if (singleViewBtn) singleViewBtn.addEventListener('click', () => switchView('single'));
+    if (listViewBtn) listViewBtn.addEventListener('click', () => switchView('list'));
+    if (playAllVideosBtn) playAllVideosBtn.addEventListener('click', playAllVideos);
+    if (downloadBtnList) downloadBtnList.addEventListener('click', handleDownload);
+    if (returnHomeBtnList) returnHomeBtnList.addEventListener('click', returnToHome);
 
-    audioPlayer.addEventListener('ended', handleAudioEnded);
+    if (audioPlayer) audioPlayer.addEventListener('ended', handleAudioEnded);
 
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => switchTab(btn.dataset.tab));
@@ -92,6 +65,133 @@ function initializeEventListeners() {
             sessionStorage.setItem('navigating_to_settings', 'true');
         });
     }
+
+    document.addEventListener('click', hideContextMenu);
+
+    const deleteHistoryItem = document.getElementById('delete-history-item');
+    if (deleteHistoryItem) {
+        deleteHistoryItem.addEventListener('click', handleDeleteHistory);
+    }
+}
+
+async function loadHistoryList() {
+    try {
+        const response = await fetch('/api/history', {
+            credentials: 'include'
+        });
+        const data = await response.json();
+        
+        if (response.ok) {
+            displayHistoryList(data.history);
+        }
+    } catch (error) {
+        console.error('获取历史失败:', error);
+    }
+}
+
+function displayHistoryList(history) {
+    const historyList = document.getElementById('history-list');
+    
+    if (!history || history.length === 0) {
+        historyList.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">暂无历史记录</div>';
+        return;
+    }
+    
+    historyList.innerHTML = '';
+    
+    history.forEach(record => {
+        const item = document.createElement('div');
+        item.className = 'history-item';
+        item.dataset.sessionId = record.session_id;
+        
+        const title = document.createElement('div');
+        title.className = 'history-item-title';
+        const filename = record.filename || '未命名';
+        title.textContent = filename.substring(0, 20) + (filename.length > 20 ? '...' : '');
+        
+        const time = document.createElement('div');
+        time.className = 'history-item-time';
+        const uploadTime = record.created_at ? new Date(record.created_at.replace(' ', 'T')).toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        }) : '-';
+        time.textContent = uploadTime;
+        
+        item.appendChild(title);
+        item.appendChild(time);
+        
+        item.addEventListener('click', () => {
+            if (record.session_id && record.generated_scene_count > 0) {
+                loadPlayback(record.session_id);
+                document.querySelectorAll('.history-item').forEach(el => el.classList.remove('active'));
+                item.classList.add('active');
+            } else {
+                alert('该记录还在生成中，请稍后查看');
+            }
+        });
+        
+        item.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            showContextMenu(e, record.session_id);
+        });
+        
+        historyList.appendChild(item);
+    });
+}
+
+function showContextMenu(event, sessionId) {
+    const contextMenu = document.getElementById('context-menu');
+    contextMenu.style.display = 'block';
+    contextMenu.style.left = event.pageX + 'px';
+    contextMenu.style.top = event.pageY + 'px';
+    currentContextMenuSessionId = sessionId;
+}
+
+function hideContextMenu() {
+    const contextMenu = document.getElementById('context-menu');
+    if (contextMenu) {
+        contextMenu.style.display = 'none';
+    }
+}
+
+async function handleDeleteHistory() {
+    if (!currentContextMenuSessionId) return;
+    
+    if (!confirm('确定要删除这条历史记录吗？')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/delete_history/${currentContextMenuSessionId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            loadHistoryList();
+            
+            if (currentTaskId === currentContextMenuSessionId) {
+                returnToHome();
+            }
+        } else {
+            const data = await response.json();
+            alert('删除失败: ' + (data.error || '未知错误'));
+        }
+    } catch (error) {
+        alert('删除失败: ' + error.message);
+    }
+    
+    hideContextMenu();
+}
+
+function showUploadSection() {
+    document.getElementById('welcome-section').style.display = 'none';
+    document.getElementById('player-section').classList.add('hidden');
+    document.getElementById('progress-section').classList.add('hidden');
+    document.getElementById('upload-section').style.display = 'block';
 }
 
 function handleFileSelect(event) {
@@ -101,30 +201,8 @@ function handleFileSelect(event) {
         fileInfo.textContent = `已选择: ${file.name}`;
         fileInfo.style.color = '';
         document.getElementById('start-generate-btn').disabled = false;
-        // Save file name to sessionStorage for navigation to settings
         sessionStorage.setItem('selected_file_name', file.name);
     }
-}
-
-function restoreFileInfo() {
-    // Only restore if coming back from settings page
-    const fromSettings = sessionStorage.getItem('navigating_to_settings') === 'true';
-    
-    if (fromSettings) {
-        const fileName = sessionStorage.getItem('selected_file_name');
-        if (fileName) {
-            document.getElementById('file-info').textContent = `之前选择: ${fileName} (请重新选择文件)`;
-            document.getElementById('file-info').style.color = '#ff9800';
-        }
-        // Clear the navigation flag
-        sessionStorage.removeItem('navigating_to_settings');
-    } else {
-        // Clear file info if not from settings (page reload or new visit)
-        sessionStorage.removeItem('selected_file_name');
-        document.getElementById('file-info').textContent = '';
-        document.getElementById('start-generate-btn').disabled = true;
-    }
-    // Button stays disabled until user selects a file again
 }
 
 function switchTab(tabName) {
@@ -258,7 +336,7 @@ async function handleStartGenerate() {
             formData.append('custom_prompt', customPrompt);
         }
 
-        document.getElementById('upload-section').classList.add('hidden');
+        document.getElementById('upload-section').style.display = 'none';
         document.getElementById('progress-section').classList.remove('hidden');
 
         try {
@@ -302,7 +380,7 @@ async function handleStartGenerate() {
             formData.append('custom_prompt', customPrompt);
         }
 
-        document.getElementById('upload-section').classList.add('hidden');
+        document.getElementById('upload-section').style.display = 'none';
         document.getElementById('progress-section').classList.remove('hidden');
 
         try {
@@ -349,6 +427,7 @@ async function pollStatus() {
                 setTimeout(pollStatus, 2000);
             } else if (data.status === 'completed') {
                 await loadScenes();
+                loadHistoryList();
             } else if (data.status === 'error') {
                 alert('生成失败: ' + data.message);
                 resetUploadSection();
@@ -380,6 +459,7 @@ async function loadScenes() {
             currentSceneIndex = 0;
 
             document.getElementById('progress-section').classList.add('hidden');
+            document.getElementById('welcome-section').style.display = 'none';
             document.getElementById('player-section').classList.remove('hidden');
 
             displayScene(0);
@@ -479,7 +559,6 @@ function displayScene(index) {
     }, 10);
 }
 
-
 function togglePlayPause() {
     if (isPlaying) {
         pausePlayback();
@@ -558,28 +637,31 @@ function handleVolumeChange(event) {
 
 function resetUploadSection() {
     document.getElementById('progress-section').classList.add('hidden');
-    document.getElementById('upload-section').style.display = 'block';
+    document.getElementById('welcome-section').style.display = 'flex';
 }
 
 function returnToHome() {
-    if (confirm('确定要返回主页吗?当前播放将被停止。')) {
-        stopPlayback();
-        
-        const fileInput = document.getElementById('novel-file');
-        fileInput.value = '';
-        document.getElementById('file-info').textContent = '';
-        document.getElementById('start-generate-btn').disabled = true;
-        
-        sessionStorage.removeItem('selected_file_name');
-        sessionStorage.removeItem('navigating_to_settings');
-        
-        currentTaskId = null;
-        scenes = [];
-        currentSceneIndex = 0;
-        
-        document.getElementById('player-section').classList.add('hidden');
-        document.getElementById('upload-section').style.display = 'block';
-    }
+    stopPlayback();
+    
+    const fileInput = document.getElementById('novel-file');
+    if (fileInput) fileInput.value = '';
+    const fileInfo = document.getElementById('file-info');
+    if (fileInfo) fileInfo.textContent = '';
+    const startBtn = document.getElementById('start-generate-btn');
+    if (startBtn) startBtn.disabled = true;
+    
+    sessionStorage.removeItem('selected_file_name');
+    sessionStorage.removeItem('navigating_to_settings');
+    
+    currentTaskId = null;
+    scenes = [];
+    currentSceneIndex = 0;
+    
+    document.getElementById('player-section').classList.add('hidden');
+    document.getElementById('upload-section').style.display = 'none';
+    document.getElementById('welcome-section').style.display = 'flex';
+    
+    document.querySelectorAll('.history-item').forEach(el => el.classList.remove('active'));
 }
 
 async function checkAuthentication() {
@@ -592,7 +674,6 @@ async function checkAuthentication() {
         if (data.user) {
             document.getElementById('username-display').textContent = `欢迎，${data.user.username}`;
             document.getElementById('logout-btn').style.display = 'inline-block';
-            document.getElementById('upload-section').style.display = 'block';
         } else {
             window.location.href = '/login';
         }
@@ -617,67 +698,6 @@ async function handleLogout() {
     }
 }
 
-async function showHistory() {
-    try {
-        const response = await fetch('/api/history', {
-            credentials: 'include'
-        });
-        const data = await response.json();
-        
-        if (response.ok) {
-            displayHistory(data.history);
-            document.getElementById('upload-section').style.display = 'none';
-            document.getElementById('history-section').style.display = 'block';
-        } else {
-            alert('获取历史失败: ' + data.error);
-        }
-    } catch (error) {
-        alert('获取历史失败: ' + error.message);
-    }
-}
-
-function displayHistory(history) {
-    const historyList = document.getElementById('history-list');
-    
-    if (!history || history.length === 0) {
-        historyList.innerHTML = '<p>还没有上传记录</p>';
-        return;
-    }
-    
-    let html = '<table style="width: 100%; border-collapse: collapse;">';
-    html += '<thead><tr style="background: #f0f0f0;">';
-    html += '<th style="padding: 10px; border: 1px solid #ddd;">文件名</th>';
-    html += '<th style="padding: 10px; border: 1px solid #ddd;">上传时间</th>';
-    html += '<th style="padding: 10px; border: 1px solid #ddd;">操作</th>';
-    html += '</tr></thead><tbody>';
-    
-    history.forEach(record => {
-        const uploadTime = record.created_at ? new Date(record.created_at.replace(' ', 'T')).toLocaleString('zh-CN', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
-        }) : '-';
-        
-        html += '<tr>';
-        html += `<td style="padding: 10px; border: 1px solid #ddd;">${record.filename || '-'}</td>`;
-        html += `<td style="padding: 10px; border: 1px solid #ddd;">${uploadTime}</td>`;
-        html += `<td style="padding: 10px; border: 1px solid #ddd;">`;
-        if (record.session_id && record.generated_scene_count > 0) {
-            html += `<a href="#" onclick="loadPlayback('${record.session_id}'); return false;" style="color: #007bff; text-decoration: none;">查看作品</a>`;
-        } else {
-            html += '<span style="color: #999;">生成中</span>';
-        }
-        html += `</td>`;
-        html += '</tr>';
-    });
-    
-    html += '</tbody></table>';
-    historyList.innerHTML = html;
-}
-
 async function loadPlayback(sessionId) {
     try {
         const response = await fetch(`/api/scenes/${sessionId}`, {
@@ -690,7 +710,8 @@ async function loadPlayback(sessionId) {
             currentSceneIndex = 0;
             currentTaskId = sessionId;
 
-            document.getElementById('history-section').style.display = 'none';
+            document.getElementById('welcome-section').style.display = 'none';
+            document.getElementById('upload-section').style.display = 'none';
             document.getElementById('player-section').classList.remove('hidden');
 
             displayScene(0);
