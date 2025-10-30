@@ -12,7 +12,6 @@
 - 🎭 **角色立绘生成**：为每个主要角色生成稳定的外观设定和立绘
 - 🎨 使用 AI 生成场景图片（支持七牛 Gemini 和 OpenAI DALL-E 3）
 - 🗣️ 自动生成中文语音配音（Google TTS）
-- 🎥 **视频生成**：支持将场景图片转换为视频（可选）
 - 📝 图文结合，文字叠加在图片上
 - 💾 自动缓存已生成的图片和音频
 
@@ -159,7 +158,6 @@ anime_output/
 - `character_manager.py` - 角色管理器
 - `image_generator.py` - 图片生成器（支持七牛 Gemini 和 OpenAI DALL-E 3）
 - `tts_generator.py` - **增强语音生成器（支持多角色音色和情感）**
-- `video_generator.py` - 视频生成器（可选）
 - `scene_composer.py` - 场景组合器（支持分镜模式）
 - `anime_generator.py` - 主程序和命令行接口
 - `web_app.py` - Flask Web 服务器

@@ -85,30 +85,16 @@ def get_user_by_id(user_id):
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor(pymysql.cursors.DictCursor)
-            cursor.execute('SELECT id, username, created_at, video_generation_count FROM users WHERE id = %s', (user_id,))
+            cursor.execute('SELECT id, username, created_at FROM users WHERE id = %s', (user_id,))
             user = cursor.fetchone()
             return user
     except Exception as e:
         return None
 
 def get_user_video_count(user_id):
-    try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor(pymysql.cursors.DictCursor)
-            cursor.execute('SELECT video_generation_count FROM users WHERE id = %s', (user_id,))
-            result = cursor.fetchone()
-            return result['video_generation_count'] if result else 0
-    except Exception as e:
-        return 0
+    return 0
 
 def increment_user_video_count(user_id):
-    try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('UPDATE users SET video_generation_count = video_generation_count + 1 WHERE id = %s', (user_id,))
-            conn.commit()
-            return True
-    except Exception as e:
-        return False
+    return True
 
 init_user_db()

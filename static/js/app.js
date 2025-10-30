@@ -3,8 +3,6 @@ let scenes = [];
 let currentSceneIndex = 0;
 let isPlaying = false;
 let audioPlayer = null;
-let videoPlayer = null;
-let isVideoMode = false;
 let currentContextMenuSessionId = null;
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -26,12 +24,7 @@ function initializeEventListeners() {
     const returnHomeBtn = document.getElementById('return-home-btn');
     const logoutBtn = document.getElementById('logout-btn');
     const uploadNovelBtn = document.getElementById('upload-novel-btn');
-    const downloadBtn = document.getElementById('download-btn');
     const novelTextInput = document.getElementById('novel-text-input');
-    const singleViewBtn = document.getElementById('single-view-btn');
-    const listViewBtn = document.getElementById('list-view-btn');
-    const playAllVideosBtn = document.getElementById('play-all-videos-btn');
-    const downloadBtnList = document.getElementById('download-btn-list');
     const returnHomeBtnList = document.getElementById('return-home-btn-list');
 
     if (selectFileBtn) selectFileBtn.addEventListener('click', () => novelFile.click());
@@ -45,12 +38,7 @@ function initializeEventListeners() {
     if (returnHomeBtn) returnHomeBtn.addEventListener('click', returnToHome);
     if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
     if (uploadNovelBtn) uploadNovelBtn.addEventListener('click', showUploadSection);
-    if (downloadBtn) downloadBtn.addEventListener('click', handleDownload);
     if (novelTextInput) novelTextInput.addEventListener('input', handleTextInput);
-    if (singleViewBtn) singleViewBtn.addEventListener('click', () => switchView('single'));
-    if (listViewBtn) listViewBtn.addEventListener('click', () => switchView('list'));
-    if (playAllVideosBtn) playAllVideosBtn.addEventListener('click', playAllVideos);
-    if (downloadBtnList) downloadBtnList.addEventListener('click', handleDownload);
     if (returnHomeBtnList) returnHomeBtnList.addEventListener('click', returnToHome);
 
     if (audioPlayer) audioPlayer.addEventListener('ended', handleAudioEnded);
@@ -330,7 +318,6 @@ async function handleStartGenerate() {
     reader.readAsText(file);
     
     async function proceedWithTextUpload(textContent) {
-        const enableVideo = document.getElementById('enable-video').checked;
         const useStoryboard = document.getElementById('use-storyboard').checked;
         
         const formData = new FormData();
@@ -338,7 +325,6 @@ async function handleStartGenerate() {
         formData.append('novel', blob, 'novel.txt');
         formData.append('api_key', apiKey);
         formData.append('api_provider', apiProvider);
-        formData.append('enable_video', enableVideo ? 'true' : 'false');
         formData.append('use_storyboard', useStoryboard ? 'true' : 'false');
         if (customPrompt) {
             formData.append('custom_prompt', customPrompt);
@@ -375,14 +361,12 @@ async function handleStartGenerate() {
     }
     
     async function proceedWithFileUpload() {
-        const enableVideo = document.getElementById('enable-video').checked;
         const useStoryboard = document.getElementById('use-storyboard').checked;
         
         const formData = new FormData();
         formData.append('novel', fileInput.files[0]);
         formData.append('api_key', apiKey);
         formData.append('api_provider', apiProvider);
-        formData.append('enable_video', enableVideo ? 'true' : 'false');
         formData.append('use_storyboard', useStoryboard ? 'true' : 'false');
         if (customPrompt) {
             formData.append('custom_prompt', customPrompt);
@@ -492,39 +476,8 @@ function displayScene(index) {
     const sceneShotType = document.getElementById('scene-shot-type');
     const sceneMood = document.getElementById('scene-mood');
 
-    if (scene.video_url) {
-        if (document.getElementById('scene-image').tagName !== 'VIDEO') {
-            const imageWrapper = document.querySelector('.scene-image-wrapper');
-            imageWrapper.innerHTML = '<video id="scene-image" controls style="width: 100%; height: auto; border-radius: 10px;"></video>';
-        }
-        const videoElement = document.getElementById('scene-image');
-        videoElement.src = scene.video_url;
-        videoPlayer = videoElement;
-        isVideoMode = true;
-        
-        videoElement.onended = function() {
-            if (isPlaying && currentSceneIndex < scenes.length - 1) {
-                navigateScene(1);
-            } else if (currentSceneIndex >= scenes.length - 1) {
-                isPlaying = false;
-                document.getElementById('play-pause-btn').textContent = '▶️ 播放';
-            }
-        };
-        
-        if (isPlaying) {
-            videoElement.play();
-        }
-    } else {
-        if (document.getElementById('scene-image').tagName === 'VIDEO') {
-            const imageWrapper = document.querySelector('.scene-image-wrapper');
-            imageWrapper.innerHTML = '<img id="scene-image" src="" alt="场景图片">';
-        }
-        
-        const imgElement = document.getElementById('scene-image');
-        imgElement.src = scene.image_url;
-        videoPlayer = null;
-        isVideoMode = false;
-    }
+    const imgElement = document.getElementById('scene-image');
+    imgElement.src = scene.image_url;
     
     sceneText.textContent = scene.text;
     sceneCounter.textContent = `分镜 ${index + 1} / ${scenes.length}`;
@@ -556,9 +509,7 @@ function displayScene(index) {
         sceneCharacters.textContent = '';
     }
 
-    if (!isVideoMode) {
-        audioPlayer.src = scene.audio_url;
-    }
+    audioPlayer.src = scene.audio_url;
 
     const sceneCard = document.getElementById('scene-card');
     sceneCard.style.animation = 'none';
@@ -579,40 +530,23 @@ function startPlayback() {
     isPlaying = true;
     document.getElementById('play-pause-btn').textContent = '⏸ 暂停';
     
-    if (isVideoMode && videoPlayer) {
-        videoPlayer.play().catch(error => {
-            console.error('视频播放失败:', error);
-            isPlaying = false;
-            document.getElementById('play-pause-btn').textContent = '▶️ 播放';
-        });
-    } else {
-        audioPlayer.play().catch(error => {
-            console.error('音频播放失败:', error);
-            isPlaying = false;
-            document.getElementById('play-pause-btn').textContent = '▶️ 播放';
-        });
-    }
+    audioPlayer.play().catch(error => {
+        console.error('音频播放失败:', error);
+        isPlaying = false;
+        document.getElementById('play-pause-btn').textContent = '▶️ 播放';
+    });
 }
 
 function pausePlayback() {
     isPlaying = false;
-    if (isVideoMode && videoPlayer) {
-        videoPlayer.pause();
-    } else {
-        audioPlayer.pause();
-    }
+    audioPlayer.pause();
     document.getElementById('play-pause-btn').textContent = '▶️ 播放';
 }
 
 function stopPlayback() {
     isPlaying = false;
-    if (isVideoMode && videoPlayer) {
-        videoPlayer.pause();
-        videoPlayer.currentTime = 0;
-    } else {
-        audioPlayer.pause();
-        audioPlayer.currentTime = 0;
-    }
+    audioPlayer.pause();
+    audioPlayer.currentTime = 0;
     document.getElementById('play-pause-btn').textContent = '▶️ 播放';
 }
 
@@ -750,103 +684,6 @@ async function loadPlayback(sessionId, inputText = null) {
     }
 }
 
-async function handleDownload() {
-    if (!currentTaskId || scenes.length === 0) {
-        alert('没有可下载的内容');
-        return;
-    }
-
-    const progressOverlay = document.createElement('div');
-    progressOverlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.7);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 10000;
-    `;
-    
-    const progressBox = document.createElement('div');
-    progressBox.style.cssText = `
-        background: white;
-        padding: 40px;
-        border-radius: 10px;
-        text-align: center;
-        min-width: 300px;
-    `;
-    
-    progressBox.innerHTML = `
-        <h3 style="margin-top: 0; color: #333;">正在生成视频...</h3>
-        <div style="margin: 20px 0;">
-            <div style="width: 100%; height: 30px; background: #f0f0f0; border-radius: 15px; overflow: hidden;">
-                <div id="download-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #4CAF50, #45a049); transition: width 0.3s;"></div>
-            </div>
-        </div>
-        <p id="download-progress-text" style="color: #666; margin: 10px 0;">正在合并场景...</p>
-    `;
-    
-    progressOverlay.appendChild(progressBox);
-    document.body.appendChild(progressOverlay);
-    
-    const progressBar = progressBox.querySelector('#download-progress-bar');
-    const progressText = progressBox.querySelector('#download-progress-text');
-    
-    let progress = 0;
-    const progressInterval = setInterval(() => {
-        if (progress < 90) {
-            progress += Math.random() * 15;
-            if (progress > 90) progress = 90;
-            progressBar.style.width = progress + '%';
-            
-            if (progress < 30) {
-                progressText.textContent = '正在合并场景...';
-            } else if (progress < 60) {
-                progressText.textContent = '正在处理视频...';
-            } else {
-                progressText.textContent = '即将完成...';
-            }
-        }
-    }, 500);
-
-    try {
-        const downloadUrl = `/api/download/${currentTaskId}`;
-        
-        const response = await fetch(downloadUrl, {
-            credentials: 'include'
-        });
-        
-        if (!response.ok) {
-            throw new Error('下载失败');
-        }
-        
-        const blob = await response.blob();
-        
-        clearInterval(progressInterval);
-        progressBar.style.width = '100%';
-        progressText.textContent = '下载完成！';
-        
-        setTimeout(() => {
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `anime_${currentTaskId}.mp4`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(link.href);
-            
-            document.body.removeChild(progressOverlay);
-        }, 500);
-    } catch (error) {
-        clearInterval(progressInterval);
-        document.body.removeChild(progressOverlay);
-        alert('下载失败: ' + error.message);
-    }
-}
-
 function showPaymentDialog(paymentAmount, wordCount) {
     return new Promise((resolve) => {
         const dialog = document.createElement('div');
@@ -930,93 +767,3 @@ function showPaymentDialog(paymentAmount, wordCount) {
     });
 }
 
-function switchView(viewType) {
-    const singleView = document.getElementById('single-view');
-    const listView = document.getElementById('list-view');
-    const singleViewBtn = document.getElementById('single-view-btn');
-    const listViewBtn = document.getElementById('list-view-btn');
-    
-    if (viewType === 'single') {
-        singleView.style.display = 'block';
-        listView.style.display = 'none';
-        singleViewBtn.classList.add('active');
-        listViewBtn.classList.remove('active');
-    } else if (viewType === 'list') {
-        singleView.style.display = 'none';
-        listView.style.display = 'block';
-        singleViewBtn.classList.remove('active');
-        listViewBtn.classList.add('active');
-        renderVideoList();
-    }
-}
-
-function renderVideoList() {
-    const container = document.getElementById('video-list-container');
-    container.innerHTML = '';
-    
-    const videosWithIndex = scenes
-        .map((scene, index) => ({ scene, index }))
-        .filter(item => item.scene.video_url);
-    
-    if (videosWithIndex.length === 0) {
-        container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #999;">没有视频可显示。请确保在生成时启用了视频生成功能。</p>';
-        return;
-    }
-    
-    videosWithIndex.forEach(({ scene, index }) => {
-        const card = document.createElement('div');
-        card.style.cssText = `
-            background: white;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            transition: transform 0.2s;
-        `;
-        card.onmouseover = () => card.style.transform = 'translateY(-5px)';
-        card.onmouseout = () => card.style.transform = 'translateY(0)';
-        
-        card.innerHTML = `
-            <video controls style="width: 100%; height: 200px; object-fit: cover;" preload="metadata">
-                <source src="${scene.video_url}" type="video/mp4">
-            </video>
-            <div style="padding: 15px;">
-                <h4 style="margin: 0 0 10px 0; color: #333;">分镜 ${index + 1}</h4>
-                <p style="margin: 0; color: #666; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${scene.text || '无描述'}</p>
-                ${scene.shot_type ? `<p style="margin: 5px 0 0 0; color: #999; font-size: 12px;">📷 ${scene.shot_type}</p>` : ''}
-                <button onclick="playVideoFromList(${index})" style="
-                    margin-top: 10px;
-                    padding: 8px 16px;
-                    background: #007bff;
-                    color: white;
-                    border: none;
-                    border-radius: 5px;
-                    cursor: pointer;
-                    width: 100%;
-                ">在单个播放器中查看</button>
-            </div>
-        `;
-        
-        container.appendChild(card);
-    });
-}
-
-function playVideoFromList(index) {
-    switchView('single');
-    displayScene(index);
-}
-
-function playAllVideos() {
-    const videosWithIndex = scenes
-        .map((scene, index) => ({ scene, index }))
-        .filter(item => item.scene.video_url);
-    
-    if (videosWithIndex.length === 0) {
-        alert('没有视频可播放');
-        return;
-    }
-    
-    switchView('single');
-    displayScene(videosWithIndex[0].index);
-    isPlaying = true;
-    startPlayback();
-}

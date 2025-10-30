@@ -9,7 +9,6 @@ from gevent.pywsgi import WSGIServer
 
 from werkzeug.utils import secure_filename
 from anime_generator import AnimeGenerator
-from video_merger import VideoMerger
 
 from common import get_base_dir
 from flask import Flask, render_template, request, jsonify, send_from_directory, session, redirect, url_for, send_file
@@ -69,7 +68,7 @@ class FlaskAppWrapper:
             return f(*args, **kwargs)
         return decorated_function
     
-    def _generate_anime_async(self, task_id, novel_path, max_scenes, api_key, provider='qiniu', custom_prompt=None, enable_video=False, use_ai_analysis=True, use_storyboard=True, user_id=None):
+    def _generate_anime_async(self, task_id, novel_path, max_scenes, api_key, provider='qiniu', custom_prompt=None, use_ai_analysis=True, use_storyboard=True, user_id=None):
         def update_status(progress, message):
             self.generation_status_[task_id] = {
                 'status': 'processing',
@@ -84,7 +83,6 @@ class FlaskAppWrapper:
                 openai_api_key=api_key, 
                 provider=provider, 
                 custom_prompt=custom_prompt, 
-                enable_video=enable_video,
                 use_ai_analysis=use_ai_analysis,
                 session_id=task_id
             )
@@ -94,7 +92,6 @@ class FlaskAppWrapper:
             metadata = generator.generate_from_novel(
                 novel_path, 
                 max_scenes=max_scenes, 
-                generate_video=enable_video,
                 use_storyboard=use_storyboard,
                 progress_callback=update_status
             )
@@ -263,7 +260,6 @@ class FlaskAppWrapper:
             api_key = request.form.get('api_key', '')
             provider = request.form.get('api_provider', 'qiniu')
             custom_prompt = request.form.get('custom_prompt', '')
-            enable_video = request.form.get('enable_video', 'false').lower() == 'true'
             use_ai_analysis = request.form.get('use_ai_analysis', 'true').lower() == 'true'
             use_storyboard = request.form.get('use_storyboard', 'true').lower() == 'true'
             
@@ -276,7 +272,7 @@ class FlaskAppWrapper:
             user_id = session.get('user_id')
             thread = threading.Thread(
                 target=self._generate_anime_async,
-                args=(task_id, file_path, max_scenes, api_key, provider, custom_prompt, enable_video, use_ai_analysis, use_storyboard, user_id)
+                args=(task_id, file_path, max_scenes, api_key, provider, custom_prompt, use_ai_analysis, use_storyboard, user_id)
             )
             thread.start()
             
@@ -323,8 +319,6 @@ class FlaskAppWrapper:
                     
                     scene_data['image_url'] = f"/api/file/{scene_folder}/scene.png"
                     scene_data['audio_url'] = f"/api/file/{scene_folder}/narration.mp3"
-                    if scene_data.get('video_path'):
-                        scene_data['video_url'] = f"/api/file/{scene_folder}/scene.mp4"
                     scenes.append(scene_data)
         
         return jsonify({
@@ -340,60 +334,7 @@ class FlaskAppWrapper:
         return send_from_directory(directory, filename)
     
     def download_content(self, task_id):
-        metadata = None
-        
-        if task_id in self.generation_status_:
-            status = self.generation_status_[task_id]
-            if status['status'] != 'completed':
-                return jsonify({'error': '任务未完成'}), 400
-            metadata = status.get('metadata', {})
-        else:
-            db_record = get_statistics(session_id=task_id)
-            if not db_record:
-                return jsonify({'error': '任务不存在'}), 404
-            
-            if not db_record.get('metadata'):
-                return jsonify({'error': '任务未完成或元数据不存在'}), 400
-            
-            metadata = json.loads(db_record['metadata'])
-        
-        scenes = metadata.get('scenes', [])
-        
-        if not scenes:
-            return jsonify({'error': '没有可下载的内容'}), 404
-        
-        try:
-            scene_folders = [scene_info['folder'] for scene_info in scenes]
-
-            temp_video_dir = os.path.join(get_base_dir(), 'temp_videos')
-            os.makedirs(temp_video_dir, exist_ok=True)
-
-            output_video_path = os.path.join(temp_video_dir, f'merged_{task_id}.mp4')
-
-            if os.path.exists(output_video_path):
-                return send_file(
-                    output_video_path,
-                    mimetype='video/mp4',
-                    as_attachment=True,
-                    download_name=f'anime_{task_id}.mp4'
-                )
-            
-            merger = VideoMerger()
-            success = merger.merge_scene_videos(scene_folders, output_video_path)
-            
-            if not success:
-                return jsonify({'error': '视频合并失败'}), 500
-            
-            return send_file(
-                output_video_path,
-                mimetype='video/mp4',
-                as_attachment=True,
-                download_name=f'anime_{task_id}.mp4'
-            )
-            
-        except Exception as e:
-            logging.error(f"下载失败: {e}")
-            return jsonify({'error': f'下载失败: {str(e)}'}), 500
+        return jsonify({'error': '下载功能已移除'}), 404
     
     def run(self, debug=True, host='0.0.0.0'):
         self.app_.run(debug=debug, host=host, port=self.port_)
