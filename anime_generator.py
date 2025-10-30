@@ -8,7 +8,6 @@ from character_manager import CharacterManager
 from image_generator import ImageGenerator
 from tts_generator import TTSGenerator
 from scene_composer import SceneComposer
-from video_generator import VideoGenerator
 from typing import List, Dict
 import json
 import concurrent.futures
@@ -16,7 +15,7 @@ import threading
 
 
 class AnimeGenerator:
-    def __init__(self, openai_api_key: str = None, provider: str = "qiniu", custom_prompt: str = None, enable_video: bool = False, use_ai_analysis: bool = True, session_id: str = None):
+    def __init__(self, openai_api_key: str = None, provider: str = "qiniu", custom_prompt: str = None, use_ai_analysis: bool = True, session_id: str = None):
         load_dotenv()
         
         self.api_key = openai_api_key or os.getenv('OPENAI_API_KEY')
@@ -28,9 +27,6 @@ class AnimeGenerator:
         self.image_gen = ImageGenerator(self.api_key, provider=provider, custom_prompt=custom_prompt)
         self.tts_gen = TTSGenerator(session_id=session_id)
         
-        self.video_gen = None
-        if enable_video:
-            self.video_gen = VideoGenerator(self.api_key)
         
         self.novel_analyzer = None
         self.storyboard_gen = None
@@ -38,7 +34,7 @@ class AnimeGenerator:
             self.novel_analyzer = NovelAnalyzer(self.api_key)
             self.storyboard_gen = StoryboardGenerator(self.api_key)
         
-        self.scene_composer = SceneComposer(self.image_gen, self.tts_gen, self.char_mgr, self.video_gen, session_id=session_id)
+        self.scene_composer = SceneComposer(self.image_gen, self.tts_gen, self.char_mgr, session_id=session_id)
         
         from common import get_base_dir
         
@@ -118,7 +114,6 @@ class AnimeGenerator:
     def generate_from_novel(self, novel_path: str, 
                           max_scenes: int = None,
                           character_descriptions: Dict[str, str] = None,
-                          generate_video: bool = False,
                           use_storyboard: bool = True,
                           progress_callback = None) -> Dict:
         with open(novel_path, 'r', encoding='utf-8') as f:
@@ -217,8 +212,7 @@ class AnimeGenerator:
                     scene_metadata = self.scene_composer.create_scene_from_storyboard(
                         scene_index=panel_idx,
                         panel_info=panel_info,
-                        character_designs={name: design.get('visual_keywords', '') for name, design in character_designs.items()},
-                        generate_video=generate_video
+                        character_designs={name: design.get('visual_keywords', '') for name, design in character_designs.items()}
                         # , progress_callback=per_scene_cb  # 若支持请取消注释
                     )
                     # 如未支持内部进度，完成时置为 1.0
@@ -251,7 +245,6 @@ class AnimeGenerator:
                     scene_metadata = self.scene_composer.create_scene_with_ai_analysis(
                         scene_index=scene_idx,
                         scene_info=scene_info,
-                        generate_video=generate_video,
                         progress_callback=per_scene_cb  # 若支持请取消注释
                     )
                     per_scene_cb(1.0)
@@ -305,8 +298,7 @@ class AnimeGenerator:
                 # 由于 create_scenes_from_paragraphs 是批量方法，我们这里构造单条列表，保持接口复用
                 scenes = self.scene_composer.create_scenes_from_paragraphs(
                     [paragraph],
-                    start_index=idx,
-                    generate_video=generate_video
+                    start_index=idx
                 )
                 # 这里 scenes 应该只有一个
                 scene_metadata = scenes[0] if scenes else {
