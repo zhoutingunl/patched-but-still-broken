@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>发布广场 - 小说动漫化展示</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="main-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>发布广场</h2>
+            </div>
+            
+            <div class="shared-list" id="shared-list">
+            </div>
+            
+            <div class="sidebar-footer">
+                <a href="/settings" class="footer-link">⚙️ 设置</a>
+                <div class="qr-codes">
+                    <div class="qr-item">
+                        <img src="/static/qrcode.png" alt="微信群二维码">
+                        <p>微信群</p>
+                    </div>
+                    <div class="qr-item">
+                        <img src="/static/apk_qr.png" alt="APK下载二维码">
+                        <p>APK下载</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <main class="content-area">
+            <div class="content-header">
+                <div class="header-left">
+                    <span id="username-display" class="username-display"></span>
+                    <button id="logout-btn" class="header-btn" style="display: none;">退出登录</button>
+                </div>
+                <div class="header-right">
+                    <button id="back-home-btn" class="btn-upload">🏠 返回主页</button>
+                </div>
+            </div>
+
+            <div id="player-section" class="section">
+                <h2>动漫播放</h2>
+                <div id="content-header-text" style="display: none; padding: 15px; margin-bottom: 20px; background: #f5f5f5; border-radius: 8px; border-left: 4px solid #007bff; color: #333; font-size: 14px; line-height: 1.6; max-height: 150px; overflow-y: auto; white-space: pre-wrap; word-break: break-word;"></div>
+
+                <div id="single-view" class="view-container">
+                    <div id="scene-container" class="scene-container">
+                        <div id="scene-card" class="scene-card">
+                            <div class="scene-image-wrapper">
+                                <img id="scene-image" src="" alt="场景图片">
+                            </div>
+                            <div class="scene-text-wrapper">
+                                <p id="scene-text" class="scene-text"></p>
+                            </div>
+                            <div class="scene-info">
+                                <span id="scene-counter">场景 0 / 0</span>
+                                <span id="scene-shot-type" style="margin-left: 20px; color: #666;"></span>
+                                <span id="scene-mood" style="margin-left: 20px; color: #666;"></span>
+                                <span id="scene-characters"></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="controls">
+                        <button id="prev-btn" class="btn btn-control">⏮ 上一帧</button>
+                        <button id="play-pause-btn" class="btn btn-control">▶️ 播放</button>
+                        <button id="next-btn" class="btn btn-control">下一帧 ⏭</button>
+                        <button id="stop-btn" class="btn btn-control">⏹ 停止</button>
+                        <button id="download-btn" class="btn btn-control">⬇️ 下载</button>
+                    </div>
+
+                    <div class="volume-control">
+                        <label>🔊 音量:</label>
+                        <input type="range" id="volume-slider" min="0" max="100" value="70">
+                        <span id="volume-value">70%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="welcome-section" class="welcome-section">
+                <div class="welcome-content">
+                    <h1>📺 发布广场</h1>
+                    <p class="subtitle">浏览其他用户分享的精彩动漫作品</p>
+                    <p class="hint">← 从左侧选择作品查看</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <audio id="audio-player" preload="auto"></audio>
+
+    <script src="/static/js/square.js"></script>
+</body>
+</html>

@@ -14,7 +14,7 @@ from video_merger import VideoMerger
 from common import get_base_dir
 from flask import Flask, render_template, request, jsonify, send_from_directory, session, redirect, url_for, send_file
 from flask_cors import CORS
-from statistics_db import insert_statistics, update_generation_stats, get_statistics, delete_statistics
+from statistics_db import insert_statistics, update_generation_stats, get_statistics, delete_statistics, share_record, get_shared_records
 from user_auth import register_user, login_user, get_user_by_id, get_user_video_count, increment_user_video_count
 
 
@@ -40,6 +40,7 @@ class FlaskAppWrapper:
         self.app_.add_url_rule('/', view_func=self.index, methods=['GET'])
         self.app_.add_url_rule('/login', view_func=self.login_page, methods=['GET'])
         self.app_.add_url_rule('/settings', view_func=self.settings, methods=['GET'])
+        self.app_.add_url_rule('/square', view_func=self.square_page, methods=['GET'])
         self.app_.add_url_rule('/favicon.ico', view_func=self.get_favicon, methods=['GET'])
         self.app_.add_url_rule('/api/register', view_func=self.register, methods=['POST'])
         self.app_.add_url_rule('/api/login', view_func=self.login, methods=['POST'])
@@ -53,6 +54,8 @@ class FlaskAppWrapper:
         self.app_.add_url_rule('/api/file/<path:filepath>', view_func=self.serve_file, methods=['GET'])
         self.app_.add_url_rule('/api/download/<task_id>', view_func=self.download_content, methods=['GET'])
         self.app_.add_url_rule('/api/delete_history/<session_id>', view_func=self.delete_history, methods=['DELETE'])
+        self.app_.add_url_rule('/api/share/<session_id>', view_func=self.share_history, methods=['POST'])
+        self.app_.add_url_rule('/api/shared_records', view_func=self.get_shared_records_api, methods=['GET'])
         self.app_.add_url_rule('/get_apk', view_func=self.get_apk, methods=['GET'])
 
     def get_apk(self):
@@ -134,6 +137,9 @@ class FlaskAppWrapper:
     def settings(self):
         return render_template('settings.html')
     
+    def square_page(self):
+        return render_template('square.html')
+    
     def get_favicon(self):
         return send_from_directory(os.path.join(self.app_.root_path, 'static'), 'favicon.ico', mimetype='image/vnd.microsoft.icon')
     
@@ -193,6 +199,22 @@ class FlaskAppWrapper:
             return jsonify({'message': '删除成功'}), 200
         else:
             return jsonify({'error': '删除失败或记录不存在'}), 404
+    
+    def share_history(self, session_id):
+        if 'user_id' not in session:
+            return jsonify({'error': '请先登录'}), 401
+        
+        username = session.get('username')
+        success, message = share_record(session_id, username)
+        
+        if success:
+            return jsonify({'message': message}), 200
+        else:
+            return jsonify({'error': message}), 400
+    
+    def get_shared_records_api(self):
+        records = get_shared_records(limit=50)
+        return jsonify({'records': records}), 200
     
     def check_payment(self):
         if 'user_id' not in session:

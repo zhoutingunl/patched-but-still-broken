@@ -27,6 +27,7 @@ function initializeEventListeners() {
     const downloadBtn = document.getElementById('download-btn');
     const novelTextInput = document.getElementById('novel-text-input');
     const returnHomeBtnList = document.getElementById('return-home-btn-list');
+    const squareBtn = document.getElementById('square-btn');
 
     if (selectFileBtn) selectFileBtn.addEventListener('click', () => novelFile.click());
     if (novelFile) novelFile.addEventListener('change', handleFileSelect);
@@ -42,6 +43,7 @@ function initializeEventListeners() {
     if (downloadBtn) downloadBtn.addEventListener('click', handleDownload);
     if (novelTextInput) novelTextInput.addEventListener('input', handleTextInput);
     if (returnHomeBtnList) returnHomeBtnList.addEventListener('click', returnToHome);
+    if (squareBtn) squareBtn.addEventListener('click', () => window.location.href = '/square');
 
     if (audioPlayer) audioPlayer.addEventListener('ended', handleAudioEnded);
 
@@ -61,6 +63,11 @@ function initializeEventListeners() {
     const deleteHistoryItem = document.getElementById('delete-history-item');
     if (deleteHistoryItem) {
         deleteHistoryItem.addEventListener('click', handleDeleteHistory);
+    }
+    
+    const shareHistoryItem = document.getElementById('share-history-item');
+    if (shareHistoryItem) {
+        shareHistoryItem.addEventListener('click', handleShareHistory);
     }
 }
 
@@ -180,6 +187,29 @@ async function handleDeleteHistory() {
         }
     } catch (error) {
         alert('删除失败: ' + error.message);
+    }
+    
+    hideContextMenu();
+}
+
+async function handleShareHistory() {
+    if (!currentContextMenuSessionId) return;
+    
+    try {
+        const response = await fetch(`/api/share/${currentContextMenuSessionId}`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert(data.message || '共享成功！其他用户现在可以在发布广场看到您的作品了。');
+        } else {
+            alert('共享失败: ' + (data.error || '未知错误'));
+        }
+    } catch (error) {
+        alert('共享失败: ' + error.message);
     }
     
     hideContextMenu();
