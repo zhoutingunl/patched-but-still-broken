@@ -28,6 +28,7 @@ def init_db():
                 generated_content_size INT DEFAULT 0,
                 username VARCHAR(255),
                 filename VARCHAR(255),
+                input_text TEXT,
                 metadata TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 INDEX idx_session_id (session_id),
@@ -36,14 +37,14 @@ def init_db():
         ''')
         conn.commit()
 
-def insert_statistics(session_id, client_address, upload_file_count, upload_text_chars, upload_content_size, username=None, filename=None):
+def insert_statistics(session_id, client_address, upload_file_count, upload_text_chars, upload_content_size, username=None, filename=None, input_text=None):
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO generation_statistics 
-            (session_id, client_address, upload_file_count, upload_text_chars, upload_content_size, username, filename)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        ''', (session_id, client_address, upload_file_count, upload_text_chars, upload_content_size, username, filename))
+            (session_id, client_address, upload_file_count, upload_text_chars, upload_content_size, username, filename, input_text)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        ''', (session_id, client_address, upload_file_count, upload_text_chars, upload_content_size, username, filename, input_text))
         conn.commit()
         return cursor.lastrowid
 
