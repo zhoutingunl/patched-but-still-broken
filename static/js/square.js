@@ -59,7 +59,7 @@ function displaySharedList(records) {
     
     sharedList.innerHTML = '';
     
-    records.forEach(record => {
+    records.forEach((record, index) => {
         const item = document.createElement('div');
         item.className = 'history-item';
         item.dataset.sessionId = record.session_id;
@@ -92,6 +92,11 @@ function displaySharedList(records) {
         });
         
         sharedList.appendChild(item);
+        
+        if (index === 0 && record.session_id && record.generated_scene_count > 0) {
+            item.classList.add('active');
+            loadPlayback(record.session_id, record.input_text);
+        }
     });
 }
 
