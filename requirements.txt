@@ -12,3 +12,4 @@ moviepy==1.0.3
 imageio-ffmpeg>=0.4.8
 pymysql>=1.1.0
 gevent>=21.0.0
+pytz

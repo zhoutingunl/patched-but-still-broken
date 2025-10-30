@@ -1,14 +1,18 @@
+import logging
 import os
 from gtts import gTTS
 from typing import Optional, List, Dict
 import hashlib
+import shutil
 
 
 class TTSGenerator:
-    def __init__(self, language: str = 'zh-cn'):
+    def __init__(self, session_id='',  language: str = 'zh-CN'):
         self.language = language
-        self.cache_dir = "audio_cache"
-        os.makedirs(self.cache_dir, exist_ok=True)
+        from common import get_base_dir
+        
+        self.cache_dir_ = os.path.join(get_base_dir(), "audio_cache", session_id)
+        os.makedirs(self.cache_dir_, exist_ok=True)
         
         self.tld_map = {
             'male': 'com.au',
@@ -28,29 +32,35 @@ class TTSGenerator:
                        voice_type: str = 'default', slow: bool = False) -> Optional[str]:
         if not output_filename:
             cache_key = hashlib.md5(f"{text}_{voice_type}".encode()).hexdigest()
-            output_filename = os.path.join(self.cache_dir, f"audio_{cache_key}.mp3")
+            output_filename = os.path.join(self.cache_dir_, f"audio_{cache_key}.mp3")
         
         if os.path.exists(output_filename):
             return output_filename
-        
+
+        if text == '' or text == '\n':
+            silent_mp3_path = os.path.join('templates', 'slient_2s.mp3')
+            shutil.copy(silent_mp3_path, output_filename)
+            logging.error('text is empty, return silent_mp3!')
+            return output_filename
+
         try:
             tld = self.tld_map.get(voice_type, 'com')
             tts = gTTS(text=text, lang=self.language, slow=slow, tld=tld)
             tts.save(output_filename)
             return output_filename
         except Exception as e:
-            print(f"生成语音失败 (voice_type={voice_type}): {e}")
+            logging.exception(f"生成语音失败 (voice_type={voice_type}): {e}, text={text}")
             try:
                 tts = gTTS(text=text, lang=self.language, slow=slow)
                 tts.save(output_filename)
                 return output_filename
             except Exception as fallback_e:
-                print(f"降级生成语音也失败: {fallback_e}")
+                logging.exception(f"降级生成语音也失败: {fallback_e},  text={text}")
                 return None
     
     def generate_speech_for_scene(self, scene_text: str, scene_index: int, 
                                   voice_type: str = 'narrator') -> Optional[str]:
-        output_path = os.path.join(self.cache_dir, f"scene_{scene_index:04d}.mp3")
+        output_path = os.path.join(self.cache_dir_, f"scene_{scene_index:04d}.mp3")
         return self.generate_speech(scene_text, output_path, voice_type=voice_type)
     
     def generate_dialogue_speech(self, character_name: str, dialogue_text: str, 
@@ -60,7 +70,7 @@ class TTSGenerator:
         slow = (emotion in ['sad', 'calm'])
         
         cache_key = hashlib.md5(f"{character_name}_{dialogue_text}_{emotion}".encode()).hexdigest()
-        output_filename = os.path.join(self.cache_dir, f"dialogue_{cache_key}.mp3")
+        output_filename = os.path.join(self.cache_dir_, f"dialogue_{cache_key}.mp3")
         
         return self.generate_speech(dialogue_text, output_filename, voice_type=voice_type, slow=slow)
     
@@ -89,8 +99,7 @@ class TTSGenerator:
             return None
         
         if len(audio_segments) == 1:
-            output_path = os.path.join(self.cache_dir, f"scene_{scene_index:04d}.mp3")
-            import shutil
+            output_path = os.path.join(self.cache_dir_, f"scene_{scene_index:04d}.mp3")
             shutil.copy(audio_segments[0], output_path)
             return output_path
         
@@ -104,23 +113,21 @@ class TTSGenerator:
                 combined += segment
                 combined += AudioSegment.silent(duration=500)
             
-            output_path = os.path.join(self.cache_dir, f"scene_{scene_index:04d}.mp3")
+            output_path = os.path.join(self.cache_dir_, f"scene_{scene_index:04d}.mp3")
             combined.export(output_path, format="mp3")
             
             return output_path
             
         except ImportError:
-            print("警告: pydub未安装，使用简单拼接。安装pydub以获得更好的音频合成效果。")
+            logging.exception("警告: pydub未安装，使用简单拼接。安装pydub以获得更好的音频合成效果。")
             
-            output_path = os.path.join(self.cache_dir, f"scene_{scene_index:04d}.mp3")
-            import shutil
+            output_path = os.path.join(self.cache_dir_, f"scene_{scene_index:04d}.mp3")
             shutil.copy(audio_segments[0], output_path)
             return output_path
         except Exception as e:
-            print(f"合成多音轨失败: {e}")
+            logging.exception(f"合成多音轨失败: {e}")
             if audio_segments:
-                output_path = os.path.join(self.cache_dir, f"scene_{scene_index:04d}.mp3")
-                import shutil
+                output_path = os.path.join(self.cache_dir_, f"scene_{scene_index:04d}.mp3")
                 shutil.copy(audio_segments[0], output_path)
                 return output_path
             return None

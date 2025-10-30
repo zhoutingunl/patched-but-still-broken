@@ -1,3 +1,4 @@
+import pytz
 import pymysql
 import os
 from datetime import datetime
@@ -66,6 +67,7 @@ def update_generation_stats(session_id, generated_scene_count, generated_content
             ''', (generated_scene_count, generated_content_size, session_id))
         conn.commit()
 
+
 def get_statistics(session_id=None, username=None, limit=None):
     with get_db_connection() as conn:
         cursor = conn.cursor(pymysql.cursors.DictCursor)
@@ -80,20 +82,21 @@ def get_statistics(session_id=None, username=None, limit=None):
             if limit:
                 query += f' LIMIT {limit}'
             cursor.execute(query, (username,))
-            results = cursor.fetchall()
+
             # 转换时间格式为字符串
-            for result in results:
-                if result.get('created_at'):
-                    result['created_at'] = result['created_at'].strftime('%Y-%m-%d %H:%M:%S')
-            return results
         else:
             cursor.execute('SELECT * FROM generation_statistics ORDER BY created_at DESC')
-            results = cursor.fetchall()
-            # 转换时间格式为字符串
-            for result in results:
-                if result.get('created_at'):
-                    result['created_at'] = result['created_at'].strftime('%Y-%m-%d %H:%M:%S')
-            return results
+
+        results = cursor.fetchall()
+        for result in results:
+            if result.get('created_at'):
+                dt_utc = result['created_at']
+                if dt_utc.tzinfo is None:
+                    dt_utc = pytz.utc.localize(dt_utc)
+                dt_bj = dt_utc.astimezone(pytz.timezone("Asia/Shanghai"))
+                result['created_at'] = dt_bj.strftime('%Y-%m-%d %H:%M:%S')
+        return results
+
 
 def delete_statistics(session_id, username=None):
     """删除指定的统计记录"""

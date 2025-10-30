@@ -2,9 +2,144 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>设置 - 小说动漫化系统</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        /* 增强移动端适配与可读性（在不影响原有样式前提下补充） */
+        :root {
+            --gap: 16px;
+        }
+        body {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .container {
+            padding: 16px;
+        }
+        header h1 {
+            font-size: clamp(20px, 4.5vw, 28px);
+            margin: 8px 0;
+        }
+        .subtitle {
+            font-size: clamp(14px, 3.5vw, 16px);
+            color: #666;
+            margin: 0 0 8px;
+        }
+        .section {
+            margin-top: 20px;
+        }
+        .section h2 {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            font-size: clamp(18px, 4vw, 22px);
+            margin: 0 0 12px;
+        }
+        .settings {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--gap);
+        }
+        .setting-item {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        input[type="password"],
+        select {
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 1em;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            text-decoration: none;
+            text-align: center;
+            white-space: nowrap;
+        }
+        .btn-primary {
+            background: #4c6fff;
+            color: #fff;
+        }
+        .btn-primary:active { transform: translateY(1px); }
+        .btn-success {
+            background: #22c55e;
+            color: #fff;
+        }
+        /* “新用户福利”小徽标样式 */
+        .promo-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #0b57d0;
+            text-decoration: none;
+            background: #eef4ff;
+            border: 1px solid #d8e5ff;
+            padding: 8px 12px;
+            border-radius: 999px;
+            line-height: 1.2;
+            transition: background .2s, transform .05s;
+            /* 字体更大，随屏幕自适应 */
+            font-size: clamp(14px, 3.8vw, 18px);
+            font-weight: 600;
+        }
+        .promo-link:hover {
+            background: #e3eeff;
+        }
+        .promo-link:active {
+            transform: translateY(1px);
+        }
+        .promo-badge {
+            background: #0b57d0;
+            color: #fff;
+            font-weight: 700;
+            font-size: clamp(12px, 3.2vw, 14px);
+            padding: 2px 8px;
+            border-radius: 999px;
+            line-height: 1;
+        }
+        /* 将“API 配置”标题与福利链接并排，移动端自动换行 */
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        /* 配置状态卡片优化 */
+        #config-status {
+            padding: 16px;
+            background: #f8f9ff;
+            border-radius: 10px;
+            font-size: 15px;
+        }
+        /* 小屏幕处理：设置栅格为单列 */
+        @media (max-width: 640px) {
+            .settings {
+                grid-template-columns: 1fr;
+            }
+            .btn {
+                width: 100%;
+            }
+            .section-header {
+                gap: 12px;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -14,11 +149,18 @@
         </header>
 
         <section class="section">
-            <h2>API 配置</h2>
+            <div class="section-header">
+                <h2>API 配置</h2>
+                <a class="promo-link" href="https://www.qiniu.com/ai/models" target="_blank" rel="noopener noreferrer">
+                    <span class="promo-badge">福利</span>
+                    七牛云新用户免费获得300万Token
+                </a>
+            </div>
+
             <div class="settings">
                 <div class="setting-item">
                     <label for="api-key">七牛 API Key:</label>
-                    <input type="password" id="api-key" placeholder="输入七牛 API Key">
+                    <input type="password" id="api-key" placeholder="输入七牛 API Key" autocomplete="off" inputmode="text">
                     <small style="color: #666; margin-top: 5px;">用于生成动漫场景图片</small>
                 </div>
                 <div class="setting-item">
@@ -29,12 +171,12 @@
                     </select>
                 </div>
             </div>
-            <button id="save-settings-btn" class="btn btn-success">保存设置</button>
+            <button id="save-settings-btn" class="btn btn-success" style="margin-top: 16px;">保存设置</button>
         </section>
 
         <section class="section">
             <h2>当前配置状态</h2>
-            <div id="config-status" style="padding: 20px; background: #f8f9ff; border-radius: 10px;">
+            <div id="config-status">
                 <p><strong>API 提供商:</strong> <span id="current-provider">-</span></p>
                 <p><strong>API Key 状态:</strong> <span id="key-status">未配置</span></p>
             </div>

@@ -1,6 +1,7 @@
+import json
+import logging
 from openai import OpenAI
 from typing import Dict, List
-import json
 
 
 class StoryboardGenerator:
@@ -91,7 +92,7 @@ class StoryboardGenerator:
             return result
             
         except Exception as e:
-            print(f"分镜生成失败: {e}")
+            logging.exception(f"分镜生成失败: {e}")
             return self._create_fallback_storyboard(text)
     
     def generate_storyboard_in_chunks(self, text: str, characters: List[Dict], max_chunk_size: int = 2000, max_retries: int = 3) -> Dict:
@@ -103,7 +104,7 @@ class StoryboardGenerator:
         failure_count = 0
         
         for i, chunk in enumerate(chunks):
-            print(f"生成分镜 {i+1}/{len(chunks)}...")
+            logging.info(f"生成分镜 {i+1}/{len(chunks)}...")
             
             chunk_result = None
             retry_count = 0
@@ -118,13 +119,13 @@ class StoryboardGenerator:
                     else:
                         retry_count += 1
                         if retry_count < max_retries:
-                            print(f"分镜 {i+1} 生成结果为空，重试 {retry_count}/{max_retries}...")
+                            logging.warning(f"分镜 {i+1} 生成结果为空，重试 {retry_count}/{max_retries}...")
                 except Exception as e:
                     retry_count += 1
                     if retry_count < max_retries:
-                        print(f"分镜 {i+1} 生成失败: {e}，重试 {retry_count}/{max_retries}...")
+                        logging.error(f"分镜 {i+1} 生成失败: {e}，重试 {retry_count}/{max_retries}...")
                     else:
-                        print(f"分镜 {i+1} 生成失败，已达到最大重试次数: {e}")
+                        logging.exception(f"分镜 {i+1} 生成失败，已达到最大重试次数: {e}")
             
             if chunk_result and chunk_result.get('storyboard'):
                 for panel in chunk_result.get('storyboard', []):
@@ -133,7 +134,7 @@ class StoryboardGenerator:
                     all_panels.append(panel)
             else:
                 failure_count += 1
-                print(f"分镜 {i+1} 最终生成失败")
+                logging.error(f"分镜 {i+1} 最终生成失败")
         
         return {
             "storyboard": all_panels,

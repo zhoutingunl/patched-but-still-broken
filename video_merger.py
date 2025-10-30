@@ -1,12 +1,15 @@
 import os
+import logging
 from typing import List, Optional
 from moviepy.editor import VideoFileClip, ImageClip, AudioFileClip, concatenate_videoclips, CompositeAudioClip
+
+from common import get_base_dir
 
 
 class VideoMerger:
     def __init__(self):
-        self.temp_dir = "temp_videos"
-        os.makedirs(self.temp_dir, exist_ok=True)
+        self.temp_dir_ = os.path.join(get_base_dir(), "temp_videos")
+        os.makedirs(self.temp_dir_, exist_ok=True)
     
     def merge_scene_videos(self, scene_folders: List[str], output_path: str) -> bool:
         try:
@@ -28,7 +31,7 @@ class VideoMerger:
                             video_clips.append(clip)
             
             if not video_clips:
-                print("没有可合并的视频片段")
+                logging.error("没有可合并的视频片段")
                 return False
             
             final_video = concatenate_videoclips(video_clips, method="compose")
@@ -46,11 +49,11 @@ class VideoMerger:
                 clip.close()
             final_video.close()
             
-            print(f"视频合并完成: {output_path}")
+            logging.info(f"视频合并完成: {output_path}")
             return True
             
         except Exception as e:
-            print(f"视频合并失败: {e}")
+            logging.exception(f"视频合并失败: {e}")
             return False
     
     def _create_video_from_image_audio(self, image_path: str, audio_path: str) -> Optional[VideoFileClip]:
@@ -65,15 +68,15 @@ class VideoMerger:
             return video_clip
             
         except Exception as e:
-            print(f"从图片和音频创建视频失败: {e}")
+            logging.exception(f"从图片和音频创建视频失败: {e}")
             return None
     
     def cleanup_temp_files(self):
         try:
-            if os.path.exists(self.temp_dir):
-                for file in os.listdir(self.temp_dir):
-                    file_path = os.path.join(self.temp_dir, file)
+            if os.path.exists(self.temp_dir_):
+                for file in os.listdir(self.temp_dir_):
+                    file_path = os.path.join(self.temp_dir_, file)
                     if os.path.isfile(file_path):
                         os.remove(file_path)
         except Exception as e:
-            print(f"清理临时文件失败: {e}")
+            logging.error(f"清理临时文件失败: {e}")

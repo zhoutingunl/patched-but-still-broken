@@ -22,7 +22,7 @@ class TestTTSGenerator(unittest.TestCase):
     
     def test_init_default_language(self):
         gen = TTSGenerator()
-        self.assertEqual(gen.language, 'zh-cn')
+        self.assertEqual(gen.language, 'zh-CN')
     
     def test_init_custom_language(self):
         gen = TTSGenerator(language='en')
@@ -44,7 +44,7 @@ class TestTTSGenerator(unittest.TestCase):
         output_file = os.path.join(self.temp_dir, 'test.mp3')
         result = self.generator.generate_speech("测试文本", output_file)
         
-        mock_gtts.assert_called_once_with(text="测试文本", lang='zh-cn', slow=False)
+        mock_gtts.assert_called_once_with(text="测试文本", lang='zh-CN', slow=False)
         mock_tts_instance.save.assert_called_once_with(output_file)
         self.assertEqual(result, output_file)
     
@@ -103,7 +103,7 @@ class TestTTSGenerator(unittest.TestCase):
         output_file = os.path.join(self.temp_dir, 'empty.mp3')
         result = self.generator.generate_speech("", output_file)
         
-        mock_gtts.assert_called_once_with(text="", lang='zh-cn', slow=False)
+        mock_gtts.assert_called_once_with(text="", lang='zh-CN', slow=False)
         self.assertEqual(result, output_file)
     
     @patch('tts_generator.gTTS')

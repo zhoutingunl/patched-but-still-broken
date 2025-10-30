@@ -1,3 +1,4 @@
+import logging
 import os
 from openai import OpenAI
 from PIL import Image, ImageDraw, ImageFont
@@ -22,7 +23,9 @@ class ImageGenerator:
         else:
             self.client = OpenAI(api_key=api_key)
             
-        self.cache_dir = "image_cache"
+        from common import get_base_dir
+        
+        self.cache_dir = os.path.join(get_base_dir(), "image_cache")
         os.makedirs(self.cache_dir, exist_ok=True)
         
     def generate_character_image(self, character_name: str, 
@@ -77,7 +80,7 @@ class ImageGenerator:
             return cache_path
             
         except Exception as e:
-            print(f"生成角色图像失败: {e}")
+            logging.exception(f"生成角色图像失败: {e}")
             return None
     
     def generate_scene_image(self, scene_description: str, 
@@ -139,7 +142,7 @@ class ImageGenerator:
             return cache_path
             
         except Exception as e:
-            print(f"生成场景图像失败: {e}")
+            logging.exception(f"生成场景图像失败: {e}")
             return None
     
     def create_text_overlay(self, image_path: str, text: str, 
@@ -186,7 +189,7 @@ class ImageGenerator:
             return True
             
         except Exception as e:
-            print(f"添加文字叠加失败: {e}")
+            logging.exception(f"添加文字叠加失败: {e}")
             return False
     
     def _load_chinese_font(self, size: int):

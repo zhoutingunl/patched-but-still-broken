@@ -1,3 +1,5 @@
+import logging
+
 from openai import OpenAI
 from typing import Dict, List
 import json
@@ -79,7 +81,7 @@ class NovelAnalyzer:
             return result
             
         except Exception as e:
-            print(f"AI分析失败: {e}")
+            logging.exception(f"AI分析失败: {e}")
             return self._create_empty_result()
     
     def generate_character_design(self, character_info: Dict) -> Dict:
@@ -134,7 +136,7 @@ class NovelAnalyzer:
             return design
             
         except Exception as e:
-            print(f"角色设计生成失败: {e}")
+            logging.exception(f"角色设计生成失败: {e}")
             return self._create_fallback_design(name, appearance, personality)
     
     def _create_fallback_design(self, name: str, appearance: str, personality: str) -> Dict:
@@ -271,7 +273,7 @@ class NovelAnalyzer:
         scene_counter = 0
         
         for i, chunk in enumerate(chunks):
-            print(f"分析文本块 {i+1}/{len(chunks)}...")
+            logging.info(f"分析文本块 {i+1}/{len(chunks)}...")
             
             chunk_result = self.analyze_novel_text(chunk)
             

@@ -1,3 +1,4 @@
+import logging
 import os
 import requests
 import time
@@ -10,7 +11,9 @@ class VideoGenerator:
     def __init__(self, api_key: str):
         self.api_key = api_key
         self.base_url = "https://openai.qiniu.com/v1"
-        self.cache_dir = "video_cache"
+        from common import get_base_dir
+        
+        self.cache_dir = os.path.join(get_base_dir(), "video_cache")
         os.makedirs(self.cache_dir, exist_ok=True)
         
     def generate_video(self, 
@@ -29,53 +32,53 @@ class VideoGenerator:
         cache_path = os.path.join(self.cache_dir, f"video_{cache_key}.mp4")
         
         if os.path.exists(cache_path):
-            print(f"使用缓存的视频: {cache_path}")
+            logging.info(f"使用缓存的视频: {cache_path}")
             return cache_path
         
         for attempt in range(max_retries):
             try:
-                print(f"尝试生成视频 (第 {attempt + 1}/{max_retries} 次)...")
+                logging.info(f"尝试生成视频 (第 {attempt + 1}/{max_retries} 次)...")
                 task_id = self._create_video_task(full_prompt, image_path, duration, aspect_ratio)
                 
                 if not task_id:
-                    print(f"创建视频任务失败 (第 {attempt + 1}/{max_retries} 次)")
+                    logging.info(f"创建视频任务失败 (第 {attempt + 1}/{max_retries} 次)")
                     if attempt < max_retries - 1:
-                        print(f"将在 5 秒后重试...")
+                        logging.warning(f"将在 5 秒后重试...")
                         time.sleep(5)
                         continue
                     return None
                 
-                print(f"视频生成任务已创建，任务ID: {task_id}")
-                print("等待视频生成完成...")
+                logging.info(f"视频生成任务已创建，任务ID: {task_id}")
+                logging.info("等待视频生成完成...")
                 
                 video_url = self._wait_for_completion(task_id)
                 
                 if not video_url:
-                    print(f"视频生成失败 (第 {attempt + 1}/{max_retries} 次)")
+                    logging.warning(f"视频生成失败 (第 {attempt + 1}/{max_retries} 次)")
                     if attempt < max_retries - 1:
-                        print(f"将在 5 秒后重试...")
+                        logging.warning(f"将在 5 秒后重试...")
                         time.sleep(5)
                         continue
                     return None
                 
-                print(f"视频生成完成，正在下载...")
+                logging.info(f"视频生成完成，正在下载...")
                 download_success = self._download_video(video_url, cache_path)
                 
                 if download_success:
-                    print(f"视频下载成功 (第 {attempt + 1}/{max_retries} 次尝试)")
+                    logging.info(f"视频下载成功 (第 {attempt + 1}/{max_retries} 次尝试)")
                     return cache_path
                 else:
-                    print(f"视频下载失败 (第 {attempt + 1}/{max_retries} 次)")
+                    logging.warning(f"视频下载失败 (第 {attempt + 1}/{max_retries} 次)")
                     if attempt < max_retries - 1:
-                        print(f"将在 5 秒后重试...")
+                        logging.warning(f"将在 5 秒后重试...")
                         time.sleep(5)
                         continue
                     return None
                 
             except Exception as e:
-                print(f"生成视频失败 (第 {attempt + 1}/{max_retries} 次): {e}")
+                logging.exception(f"生成视频失败 (第 {attempt + 1}/{max_retries} 次): {e}")
                 if attempt < max_retries - 1:
-                    print(f"将在 5 秒后重试...")
+                    logging.warning(f"将在 5 秒后重试...")
                     time.sleep(5)
                     continue
                 return None
@@ -117,7 +120,7 @@ class VideoGenerator:
             return result.get("id")
             
         except Exception as e:
-            print(f"创建视频任务失败: {e}")
+            logging.exception(f"创建视频任务失败: {e}")
             return None
     
     def _wait_for_completion(self, task_id: str, max_wait: int = 600, 
@@ -140,7 +143,7 @@ class VideoGenerator:
                 result = response.json()
                 
                 status = result.get("status")
-                print(f"当前状态: {status}")
+                logging.info(f"当前状态: {status}")
                 
                 if status == "Completed":
                     data = result.get("data", {})
@@ -148,20 +151,20 @@ class VideoGenerator:
                     if videos and len(videos) > 0:
                         return videos[0].get("url")
                     else:
-                        print("未找到生成的视频")
+                        logging.error("未找到生成的视频")
                         return None
                 
                 elif status in ["Failed", "Rejected"]:
-                    print(f"视频生成失败: {status}")
+                    logging.error(f"视频生成失败: {status}")
                     return None
                 
                 time.sleep(poll_interval)
                 
             except Exception as e:
-                print(f"查询任务状态失败: {e}")
+                logging.exception(f"查询任务状态失败: {e}")
                 time.sleep(poll_interval)
         
-        print("等待超时")
+        logging.error("等待超时")
         return None
     
     def _download_video(self, video_url: str, output_path: str) -> bool:
@@ -174,11 +177,11 @@ class VideoGenerator:
                     if chunk:
                         f.write(chunk)
             
-            print(f"视频已保存到: {output_path}")
+            logging.info(f"视频已保存到: {output_path}")
             return True
             
         except Exception as e:
-            print(f"下载视频失败: {e}")
+            logging.exception(f"下载视频失败: {e}")
             return False
     
     def generate_video_from_scenes(self, scenes: list, 

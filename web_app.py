@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import logging
 import threading
 import uuid
 from functools import wraps
@@ -30,10 +31,10 @@ class FlaskAppWrapper:
         self.app_.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
         
         os.makedirs(self.upload_folder_, exist_ok=True)
-        
         self.generation_status_ = {}
         
         self._register_routes()
+        logging.info(f"Flask is started on http://127.0.0.1:{self.port_}")
     
     def _register_routes(self):
         self.app_.add_url_rule('/', view_func=self.index, methods=['GET'])
@@ -331,6 +332,8 @@ class FlaskAppWrapper:
         })
     
     def serve_file(self, filepath):
+        if not filepath.startswith('/'):
+            filepath = '/' + filepath
         directory = os.path.dirname(filepath)
         filename = os.path.basename(filepath)
         return send_from_directory(directory, filename)
@@ -360,10 +363,12 @@ class FlaskAppWrapper:
         
         try:
             scene_folders = [scene_info['folder'] for scene_info in scenes]
-            
-            output_video_path = os.path.join('temp_videos', f'merged_{task_id}.mp4')
-            os.makedirs('temp_videos', exist_ok=True)
-            
+
+            temp_video_dir = os.path.join(get_base_dir(), 'temp_videos')
+            os.makedirs(temp_video_dir, exist_ok=True)
+
+            output_video_path = os.path.join(temp_video_dir, f'merged_{task_id}.mp4')
+
             if os.path.exists(output_video_path):
                 return send_file(
                     output_video_path,
@@ -386,7 +391,7 @@ class FlaskAppWrapper:
             )
             
         except Exception as e:
-            print(f"下载失败: {e}")
+            logging.error(f"下载失败: {e}")
             return jsonify({'error': f'下载失败: {str(e)}'}), 500
     
     def run(self, debug=True, host='0.0.0.0'):
@@ -398,5 +403,7 @@ def main(port):
     WSGIServer(('0.0.0.0', server.port_), server.app_).serve_forever()
 
 if __name__ == '__main__':
+    format_config_str = '%(asctime)s %(levelname)-6s [%(threadName)s] %(message)s'
+    logging.basicConfig(format=format_config_str, level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S')
     port = 80 if sys.platform == 'linux' else 5005
     main(port)

@@ -1,9 +1,9 @@
 import os
+import logging
 from typing import List, Dict, Optional
 from image_generator import ImageGenerator
 from tts_generator import TTSGenerator
 from character_manager import CharacterManager
-import re
 
 
 class SceneComposer:
@@ -17,10 +17,12 @@ class SceneComposer:
         self.char_mgr = character_manager
         self.video_gen = video_generator
         self.session_id = session_id
+        from common import get_base_dir
+        
         if session_id:
-            self.output_dir = os.path.join("output_scenes", session_id)
+            self.output_dir = os.path.join(get_base_dir(), str(session_id), "output_scenes")
         else:
-            self.output_dir = "output_scenes"
+            self.output_dir = os.path.join(get_base_dir(), "default", "output_scenes")
         os.makedirs(self.output_dir, exist_ok=True)
     
     def create_scene(self, scene_index: int, scene_text: str, 
@@ -214,7 +216,7 @@ class SceneComposer:
             if not paragraph.strip():
                 continue
             
-            print(f"创建场景 {start_index + i + 1}/{start_index + len(paragraphs)}...")
+            logging.info(f"创建场景 {start_index + i + 1}/{start_index + len(paragraphs)}...")
             
             scene = self.create_scene(start_index + i, paragraph, generate_video=generate_video)
             scenes.append(scene)
