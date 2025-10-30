@@ -103,11 +103,19 @@ function displayHistoryList(history) {
         const item = document.createElement('div');
         item.className = 'history-item';
         item.dataset.sessionId = record.session_id;
+        item.dataset.inputText = record.input_text || '';
         
         const title = document.createElement('div');
         title.className = 'history-item-title';
-        const filename = record.filename || '未命名';
-        title.textContent = filename.substring(0, 20) + (filename.length > 20 ? '...' : '');
+        let displayText;
+        if (record.input_text) {
+            displayText = record.input_text.substring(0, 10).trim();
+            if (record.input_text.length > 10) displayText += '...';
+        } else {
+            displayText = record.filename || '未命名';
+            if (displayText.length > 20) displayText = displayText.substring(0, 20) + '...';
+        }
+        title.textContent = displayText;
         
         const time = document.createElement('div');
         time.className = 'history-item-time';
@@ -125,7 +133,7 @@ function displayHistoryList(history) {
         
         item.addEventListener('click', () => {
             if (record.session_id && record.generated_scene_count > 0) {
-                loadPlayback(record.session_id);
+                loadPlayback(record.session_id, record.input_text);
                 document.querySelectorAll('.history-item').forEach(el => el.classList.remove('active'));
                 item.classList.add('active');
             } else {
@@ -656,6 +664,13 @@ function returnToHome() {
     currentTaskId = null;
     scenes = [];
     currentSceneIndex = 0;
+    currentInputText = null;
+    
+    const headerTextEl = document.getElementById('content-header-text');
+    if (headerTextEl) {
+        headerTextEl.style.display = 'none';
+        headerTextEl.textContent = '';
+    }
     
     document.getElementById('player-section').classList.add('hidden');
     document.getElementById('upload-section').style.display = 'none';
@@ -698,7 +713,17 @@ async function handleLogout() {
     }
 }
 
-async function loadPlayback(sessionId) {
+function updateContentHeader() {
+    const headerTextEl = document.getElementById('content-header-text');
+    if (headerTextEl && currentInputText) {
+        headerTextEl.textContent = currentInputText;
+        headerTextEl.style.display = 'block';
+    } else if (headerTextEl) {
+        headerTextEl.style.display = 'none';
+    }
+}
+
+async function loadPlayback(sessionId, inputText = null) {
     try {
         const response = await fetch(`/api/scenes/${sessionId}`, {
             credentials: 'include'
@@ -709,11 +734,13 @@ async function loadPlayback(sessionId) {
             scenes = data.scenes;
             currentSceneIndex = 0;
             currentTaskId = sessionId;
+            currentInputText = inputText;
 
             document.getElementById('welcome-section').style.display = 'none';
             document.getElementById('upload-section').style.display = 'none';
             document.getElementById('player-section').classList.remove('hidden');
 
+            updateContentHeader();
             displayScene(0);
         } else {
             alert('加载作品失败: ' + data.error);

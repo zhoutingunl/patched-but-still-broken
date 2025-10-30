@@ -255,7 +255,8 @@ class FlaskAppWrapper:
                 upload_text_chars=upload_text_chars,
                 upload_content_size=upload_content_size,
                 username=username,
-                filename=filename
+                filename=filename,
+                input_text=content if filename == 'novel.txt' else None
             )
             
             max_scenes = request.form.get('max_scenes', type=int)
